@@ -1,0 +1,6 @@
+{{ if .HasPodLogs }}
+<section class="report-section pod-logs-top" id="pxc-pod-logs">
+<h2 class="pxc-pod-logs-h2">PXC · operator &amp; pod logs</h2>
+{{ .PodLogsHTML }}
+</section>
+{{ end }}

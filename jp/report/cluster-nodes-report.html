@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kubernetes nodes</title>
+<style>
+:root { font-family: system-ui, sans-serif; color: #1a1a1a; }
+body { margin: 2rem; line-height: 1.45; }
+h1 { font-size: 1.35rem; }
+h2 { font-size: 1.1rem; margin-top: 2rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { border: 1px solid #ccc; padding: 0.45rem 0.55rem; text-align: left; vertical-align: top; }
+th { background: #f4f4f4; }
+tr.pressure-alert td { background: #ffe5e5; }
+.status-true { color: #0a6b0a; font-weight: 600; }
+.status-false { color: #555; }
+.status-bad { color: #a40000; font-weight: 600; }
+.status-muted { color: #666; }
+.meta { color: #444; font-size: 0.85rem; margin-bottom: 1.5rem; }
+.sub { font-size: 0.85rem; color: #333; margin-top: 0.2rem; }
+.sub-ok { color: #0a6b0a; }
+.sub-bad { color: #a40000; }
+</style>
+</head>
+<body>
+<h1>Kubernetes cluster — nodes</h1>
+<p class="meta">Report generated at <strong>2026-04-21T16:50:08Z</strong> · Node count: <strong>3</strong></p>
+
+<h2>Nodes</h2>
+<table>
+<thead>
+<tr>
+<th>Hostname</th>
+<th>Role</th>
+<th>IP</th>
+<th>Instance type</th>
+<th>OS</th>
+<th>Kernel</th>
+<th>Kubelet</th>
+<th>CPU (capacity)</th>
+<th>Ephemeral storage (GiB)</th>
+<th>Memory (capacity)</th>
+<th>Pods (capacity)</th>
+<th>Ready</th>
+<th>PID pressure</th>
+<th>Disk pressure</th>
+<th>Memory pressure</th>
+</tr>
+</thead>
+<tbody>
+
+<tr class="">
+<td>k3d-t2-juan-arruti-node0-server-0</td>
+<td>control-plane</td>
+<td>172.31.11.2</td>
+<td>k3s</td>
+<td>K3s v1.30.1+k3s1 (linux)</td>
+<td>5.14.0-503.34.1.el9_5.x86_64</td>
+<td>v1.30.1+k3s1</td>
+<td>48</td>
+<td>3147.53</td>
+<td>376.06 GiB</td>
+<td>110</td>
+<td>
+<div><span class="status-true">True</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+</tr>
+
+<tr class="">
+<td>k3d-t2-juan-arruti-node0-agent-0</td>
+<td>worker</td>
+<td>172.31.11.4</td>
+<td>k3s</td>
+<td>K3s v1.30.1+k3s1 (linux)</td>
+<td>5.14.0-503.34.1.el9_5.x86_64</td>
+<td>v1.30.1+k3s1</td>
+<td>48</td>
+<td>3147.53</td>
+<td>376.06 GiB</td>
+<td>110</td>
+<td>
+<div><span class="status-true">True</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+</tr>
+
+<tr class="">
+<td>k3d-t2-juan-arruti-node0-agent-1</td>
+<td>worker</td>
+<td>172.31.11.3</td>
+<td>k3s</td>
+<td>K3s v1.30.1+k3s1 (linux)</td>
+<td>5.14.0-503.34.1.el9_5.x86_64</td>
+<td>v1.30.1+k3s1</td>
+<td>48</td>
+<td>3147.53</td>
+<td>376.06 GiB</td>
+<td>110</td>
+<td>
+<div><span class="status-true">True</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+<td>
+<div><span class="status-true">False</span></div>
+<div class="sub sub-ok">Since 5d 22h</div>
+</td>
+</tr>
+
+</tbody>
+</table>
+</body>
+</html>
+
+
