@@ -1,0 +1,6 @@
+# Cluster dumps must never be committed (may contain sensitive cluster data)
+CS0061148_cluster-dump.tar.gz
+cluster-dump-with-pxc.tar.gz
+cluster-dump.tar.gz
+cluster-dump*.tar.gz
+*_cluster-dump.tar.gz
