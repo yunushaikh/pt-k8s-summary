@@ -1,0 +1,51 @@
+<h1 class="report-section-title">Kubernetes cluster — nodes</h1>
+<p class="meta">Report generated at <strong>{{ .GeneratedAt }}</strong> · Node count: <strong>{{ .NodeCount }}</strong></p>
+
+<h2 class="h-sub">Nodes</h2>
+<details class="nodes-coll">
+<summary class="nodes-coll-sum" aria-label="Expand or collapse the Kubernetes nodes table"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Node inventory</strong><span class="nodes-coll-sum-meta">{{ .NodeCount }} {{ if eq .NodeCount 1 }}node{{ else }}nodes{{ end }} · roles, capacity &amp; pressure</span></span></summary>
+<div class="nodes-coll-inner">
+<table>
+<thead>
+<tr>
+<th>Hostname</th>
+<th>Role</th>
+<th>IP</th>
+<th>Instance type</th>
+<th>OS</th>
+<th>Kernel</th>
+<th>Kubelet</th>
+<th>CPU (capacity)</th>
+<th>Ephemeral storage (GiB)</th>
+<th>Memory (capacity)</th>
+<th>Pods (capacity)</th>
+<th>Ready</th>
+<th>PID pressure</th>
+<th>Disk pressure</th>
+<th>Memory pressure</th>
+</tr>
+</thead>
+<tbody>
+{{ range .Nodes }}
+<tr class="{{ .RowPressureClass }}">
+<td>{{ .Hostname }}</td>
+<td>{{ .Role }}</td>
+<td>{{ .IP }}</td>
+<td>{{ .InstanceType }}</td>
+<td>{{ .OS }}</td>
+<td>{{ .Kernel }}</td>
+<td>{{ .KubeletVersion }}</td>
+<td>{{ .CPUCap }}</td>
+<td>{{ .EphemeralGiB }}</td>
+<td>{{ .Memory }}</td>
+<td>{{ .Pods }}</td>
+<td>{{ template "condCell" .Ready }}</td>
+<td>{{ template "condCell" .PIDPressure }}</td>
+<td>{{ template "condCell" .DiskPressure }}</td>
+<td>{{ template "condCell" .MemoryPressure }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+</div>
+</details>

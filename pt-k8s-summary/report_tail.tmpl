@@ -1,0 +1,8 @@
+</div><!-- .report-shell -->
+</body>
+</html>
+
+{{ define "condCell" }}
+<div><span class="{{ .StatusClass }}">{{ .Status }}</span></div>
+<div class="sub {{ .DurationClass }}">Since {{ .SinceTransition }}</div>
+{{ end }}
