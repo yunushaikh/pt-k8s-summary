@@ -1,0 +1,6 @@
+{{ if .ExtraSections }}{{ range .ExtraSections }}
+<div class="report-subsection" id="{{ .ID }}">
+{{ if .Title }}<h3 class="addl-h3">{{ .Title }}</h3>{{ end }}
+{{ .HTML }}
+</div>
+{{ end }}{{ end }}

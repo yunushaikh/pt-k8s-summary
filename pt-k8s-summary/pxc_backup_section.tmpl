@@ -1,0 +1,104 @@
+<h2>Percona XtraDB clusters (operator CR)</h2>
+{{ if .PXCEmpty }}
+<p class="meta">No <code>PerconaXtraDBCluster</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code> (searched recursively for <code>perconaxtradbclusters.pxc.percona.com.yaml</code>).</p>
+{{ else }}
+<p class="meta">{{ .PXCMeta }} Dump root: <code>{{ .Proc.DumpRootDisplay }}</code> · Pod status and dump log files: see <strong>PXC · operator &amp; pod logs</strong> above; node inventory follows that section.</p>
+<table>
+<thead>
+<tr>
+<th>Cluster</th>
+<th>Namespace</th>
+<th>CR version</th>
+<th>Created</th>
+<th>Ready</th>
+<th>PMM enabled</th>
+<th>Unsafe Flags</th>
+<th>Update Strategy</th>
+</tr>
+</thead>
+<tbody>
+{{ range .PXCRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .CRYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .CRYAMLModalID }}-full">{{ .CRYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .CRYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Namespace }}</td>
+<td>{{ .CRVersion }}</td>
+<td>{{ .Created }}</td>
+<td><span class="{{ .ReadyStatusClass }}">{{ .ReadyStatus }}</span><br><span class="sub sub-ok">Since {{ .ReadySince }}</span></td>
+<td>{{ .PMMEnabled }}</td>
+<td>{{ if .UnsafeFlagsOK }}<span class="unsafe-flags-ok">NO</span>{{ else }}<span class="unsafe-flags-bad">{{ .UnsafeFlagsEscaped }}</span>{{ end }}</td>
+<td>{{ .UpdateStrategy }}</td>
+</tr>
+<tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
+<h3 class="pxc-subsection-title">Container images vs certified images</h3>
+<p class="meta">Compared using <code>spec.crVersion</code> <strong>{{ .CRVersion }}</strong> against the <a href="{{ .CertifiedDocURL }}" target="_blank" rel="noopener noreferrer">Percona certified images</a> list for that operator release.{{ if .CertifiedFetchErrEscaped }}<br><span class="status-bad">{{ .CertifiedFetchErrEscaped }}</span>{{ end }}</p>
+<table class="pxc-inner-table">
+<thead><tr><th>Image (from <code>pods.yaml</code>)</th><th>Matches certified list</th></tr></thead>
+<tbody>
+{{ range .ImageCertRows }}<tr><td><code>{{ .ImageEscaped }}</code></td><td>{{ if .IsCertified }}<span class="unsafe-flags-ok">yes</span>{{ else }}<span class="unsafe-flags-bad">no</span>{{ end }}</td></tr>
+{{ else }}<tr><td colspan="2" class="status-muted">No container images found for this cluster in <code>pods.yaml</code> (expected labels <code>app.kubernetes.io/instance</code> and component <code>haproxy</code>, <code>proxysql</code>, or <code>pxc</code>).</td></tr>{{ end }}
+</tbody>
+</table>
+</td></tr>
+{{ if $.ShowHAProxyCol }}
+<tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
+<h3 class="pxc-subsection-title">HAProxy</h3>
+<table class="pxc-inner-table">
+<thead><tr><th>Size</th><th>Status</th><th>Version</th></tr></thead>
+<tbody><tr><td>{{ .HAProxySize }}</td><td>{{ .HAProxyStatus }}</td><td>{{ .HAProxyVersion }}</td></tr></tbody>
+</table>
+</td></tr>
+{{ end }}
+{{ if $.ShowProxySQLCol }}
+<tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
+<h3 class="pxc-subsection-title">ProxySQL</h3>
+<table class="pxc-inner-table">
+<thead><tr><th>Size</th><th>Status</th><th>Version</th></tr></thead>
+<tbody><tr><td>{{ .ProxySQLSize }}</td><td>{{ .ProxySQLStatus }}</td><td>{{ .ProxySQLVersion }}</td></tr></tbody>
+</table>
+</td></tr>
+{{ end }}
+<tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
+<h3 class="pxc-subsection-title">PXC</h3>
+<table class="pxc-inner-table">
+<thead><tr><th>Size</th><th>Status</th><th>Version</th><th>MySQL <code>configuration</code></th></tr></thead>
+<tbody><tr><td>{{ .PXCSize }}</td><td>{{ .PXCStatus }}</td><td>{{ .PXCVersion }}</td><td class="pxc-cfg-cell"><pre class="pxc-cfg-snippet">{{ .PXCConfigSnippet }}</pre>{{ if ne .PXCConfigFullEscaped "" }}<textarea readonly hidden class="pxc-cfg-full-store" id="{{ .PXCConfigModalID }}-full">{{ .PXCConfigFullEscaped }}</textarea><div class="pxc-cfg-openwrap"><button type="button" class="pxc-cfg-btn" data-target="{{ .PXCConfigModalID }}">{{ if .PXCConfigTruncated }}Show full configuration{{ else }}View MySQL configuration{{ end }}</button></div>{{ end }}</td></tr></tbody>
+</table>
+</td></tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+
+<h2>Percona XtraDB Cluster backups</h2>
+{{ if .BackupEmpty }}
+<p class="meta">No <code>PerconaXtraDBClusterBackup</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code> (searched recursively for <code>perconaxtradbclusterbackups.pxc.percona.com.yaml</code>).</p>
+{{ else }}
+<p class="meta">{{ .BackupMeta }}</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Cluster</th>
+<th>Storage</th>
+<th>Destination</th>
+<th>Status</th>
+<th>Age</th>
+<th>Logs</th>
+</tr>
+</thead>
+<tbody>
+{{ range .BackupRows }}
+<tr>
+<td class="pxc-pod-name-cell"><textarea readonly hidden class="backup-manifest-store" id="{{ .BackupManifestModalID }}-full">{{ .BackupManifestEscaped }}</textarea><button type="button" class="pod-name-btn backup-manifest-btn" data-target="{{ .BackupManifestModalID }}" data-backup-display="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button></td>
+<td>{{ .Cluster }}</td>
+<td>{{ .Storage }}</td>
+<td>{{ .Destination }}</td>
+<td>{{ .Status }}</td>
+<td>{{ .Age }}</td>
+<td class="pxc-pod-log-cell">{{ if .HasPodLog }}<textarea readonly hidden class="pod-log-store" id="{{ .PodLogModalID }}-full">{{ .PodLogEscaped }}</textarea><button type="button" class="pod-log-btn" data-target="{{ .PodLogModalID }}" data-pod-name="{{ .LogPodName }}">View logs</button>{{ else }}<span class="status-muted">—</span>{{ end }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+

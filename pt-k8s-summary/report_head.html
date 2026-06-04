@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kubernetes &amp; Percona XtraDB Cluster</title>
+<style>
+/* Design: slate surface, teal accent, document-style report */
+*, *::before, *::after { box-sizing: border-box; }
+:root {
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --muted: #64748b;
+  --muted-2: #94a3b8;
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --th-bg: #f1f5f9;
+  --row-alt: #f8fafc;
+  --hover: #f0f9ff;
+  --accent: #0d9488;
+  --accent-2: #0e7490;
+  --ok: #047857;
+  --bad: #b91c1c;
+  --warn: #a16207;
+  --radius: 10px;
+  --radius-sm: 7px;
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+code, kbd, .mono { font-family: var(--mono); font-size: 0.9em; }
+a { color: var(--accent-2); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { color: #155e75; }
+.report-shell {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 1.75rem clamp(1rem, 4vw, 2.25rem) 3.5rem;
+  min-height: 100vh;
+}
+.report-masthead {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.15rem;
+  border-bottom: 1px solid var(--border);
+}
+.report-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1, .report-title, .report-h1 {
+  font-size: clamp(1.45rem, 2.2vw, 1.7rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: var(--ink);
+  margin: 0;
+}
+h2:not(.pxc-pod-logs-h2):not(.h-sub) {
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: var(--ink);
+  margin: 2.25rem 0 0.5rem;
+  padding: 0 0 0 0.65rem;
+  border-left: 3px solid var(--accent);
+}
+/* Card label: Processing details */
+.report-card h2 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 0.85rem;
+  border-left: 3px solid var(--accent);
+  padding: 0 0 0 0.6rem;
+}
+h2.h-sub {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--ink-soft);
+  margin: 0.2rem 0 0.45rem;
+  padding: 0 0 0 0.5rem;
+  border-left: 2px solid #99f6e4;
+}
+.report-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.35rem 1.3rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 0;
+}
+.report-section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  border-left: 0;
+  padding-left: 0;
+  margin: 1.5rem 0 0.35rem;
+  color: var(--ink);
+}
+h3.pxc-subsection-title, .report-section h3 {
+  font-size: 1.05rem;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+  border: none;
+  padding: 0;
+  margin: 1.1rem 0 0.4rem;
+}
+h3.pxc-subsection-title:first-child { margin-top: 0.25rem; }
+h4.pxc-pod-subtitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 0.9rem 0 0.35rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pxc-pod-logs-h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  border: none;
+  padding: 0;
+  margin: 0 0 0.6rem;
+}
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+th, td { border: 1px solid var(--border); padding: 0.5rem 0.65rem; text-align: left; vertical-align: top; }
+th {
+  background: var(--th-bg);
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+tbody tr { transition: background 0.1s; }
+tbody tr:hover { background: var(--row-alt); }
+tr.pressure-alert td { background: #fff1f2; }
+tr.pressure-alert:hover td { background: #ffe4e6; }
+.status-true, .pressure-false, .unsafe-flags-ok { color: var(--ok); font-weight: 600; }
+.status-false, .sub { color: var(--muted); font-weight: 500; }
+.status-bad, .sub-bad, .pressure-true, .unsafe-flags-bad { color: var(--bad); font-weight: 600; }
+.status-muted { color: var(--muted); }
+.meta { color: var(--muted); font-size: 0.86rem; margin: 0 0 0.9rem; line-height: 1.55; }
+tr.pxc-comp-title td { background: #e2e8f0; color: var(--ink-soft); font-size: 0.9rem; font-weight: 600; }
+tr.pxc-sub td { background: var(--row-alt); font-size: 0.86rem; }
+tr.pxc-sub strong { color: var(--ink); }
+.proc-list { margin: 0.2rem 0 0.25rem; padding-left: 1.15rem; }
+.proc-list li { margin: 0.28rem 0; }
+code {
+  background: var(--th-bg);
+  color: #0c4a6e;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 0.88em;
+}
+.collector-err-teaser { margin: 0.5rem 0 0; padding: 0.7rem 0.85rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-sm); font-size: 0.86rem; }
+.collector-err-teaser-txt { color: var(--ink-soft); }
+.collector-err-btn { margin-right: 0.4rem; font-size: 0.8rem; font-weight: 650; padding: 0.4rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid #ef4444; background: #fff; color: #b91c1c; cursor: pointer; }
+.collector-err-btn:hover { background: #fef2f2; }
+.collector-err-stash { display: none !important; }
+#collector-err-modal { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.5); opacity: 0; pointer-events: none; transition: opacity 0.16s; backdrop-filter: blur(2px); }
+#collector-err-modal[aria-hidden="false"] { opacity: 1; pointer-events: auto; }
+#collector-err-modal .collector-err-dlg { background: var(--surface); color: var(--ink); max-width: min(96vw, 48rem); max-height: 88vh; width: 100%; display: flex; flex-direction: column; border-radius: var(--radius); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.2); overflow: hidden; border: 1px solid var(--border); }
+#collector-err-modal .collector-err-dlg-h { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.7rem 1rem; background: #fef2f2; border-bottom: 1px solid #fecaca; }
+#collector-err-modal .collector-err-dlg-t { font-size: 1rem; font-weight: 650; margin: 0; }
+#collector-err-modal .collector-err-dlg-x { display: block; width: 2.25rem; height: 2.25rem; line-height: 1; border: none; background: transparent; color: var(--muted); font-size: 1.5rem; cursor: pointer; border-radius: 6px; }
+#collector-err-modal .collector-err-dlg-x:hover { background: #fee2e2; color: var(--bad); }
+#collector-err-modal .collector-err-dlg-body { margin: 0; padding: 1rem; overflow: auto; max-height: calc(88vh - 3.5rem); font-size: 0.8rem; line-height: 1.5; font-family: var(--mono); white-space: pre-wrap; word-break: break-word; background: #fffbeb; color: var(--ink); }
+.report-section {
+  margin-top: 1.5rem;
+  padding: 1.3rem 1.35rem 1.45rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+/* Nodes collapsible */
+.nodes-coll { margin: 0.4rem 0 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+.nodes-coll[open] { box-shadow: var(--shadow); }
+.nodes-coll-sum { display: flex; align-items: center; gap: 0.9rem; padding: 0.8rem 1.05rem; cursor: pointer; list-style: none; background: linear-gradient(120deg, rgba(13, 148, 136, 0.06) 0%, #fff 48%); transition: background 0.15s; }
+.nodes-coll-sum::-webkit-details-marker { display: none; }
+.nodes-coll-sum:hover { background: linear-gradient(120deg, rgba(13, 148, 136, 0.1) 0%, #fff 45%); }
+.nodes-coll[open] > .nodes-coll-sum { border-bottom: 1px solid var(--border); }
+.nodes-coll-exp { flex: 0 0 auto; width: 1.9rem; height: 1.9rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid #99f6e4; background: linear-gradient(150deg, #0f766e 0%, #14b8a6 100%); color: #ecfdf5; font-size: 1.1rem; font-weight: 300; line-height: 1; box-shadow: 0 2px 6px rgba(15, 118, 110, 0.25); transition: transform 0.1s, box-shadow 0.1s; }
+.nodes-coll-exp::before { content: "+"; margin-top: -1px; }
+.nodes-coll[open] .nodes-coll-exp::before { content: "\2212"; font-size: 1.05rem; }
+.nodes-coll-sum:hover .nodes-coll-exp { box-shadow: 0 3px 10px rgba(15, 118, 110, 0.3); }
+.nodes-coll-sum:active .nodes-coll-exp { transform: scale(0.95); }
+.nodes-coll-sum-body { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-width: 0; }
+.nodes-coll-sum-h { font-size: 0.95rem; font-weight: 700; color: var(--ink); }
+.nodes-coll-sum-meta { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+.nodes-coll-inner { padding: 0.5rem 0.65rem 0.85rem; background: #fafbfc; overflow-x: auto; }
+.nodes-coll-inner table th { background: #e0f2f1; color: #0f3d3a; }
+/* PXC inner & dialogs */
+td.pxc-comp-wrap { vertical-align: top; padding: 0.6rem 0.65rem 0.9rem; }
+table.pxc-inner-table { font-size: 0.86rem; margin: 0.25rem 0 0.2rem; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+table.pxc-inner-table th, table.pxc-inner-table td { border-color: #e2e8f0; }
+table.pxc-inner-table th { background: #ecfeff; color: #134e4a; }
+.pxc-pod-log-cell { white-space: nowrap; vertical-align: middle; }
+.pxc-pod-name-cell { vertical-align: middle; }
+.pod-spec-store, .pod-log-store, .backup-manifest-store, .pxc-cr-yaml-store { display: none; }
+.pod-name-btn, .pxc-cfg-btn, .pxc-cr-yaml-btn { font: inherit; color: #0d9488; background: none; border: none; padding: 0; margin: 0; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: rgba(13, 148, 136, 0.45); text-underline-offset: 2px; font-weight: 600; }
+.pod-name-btn:hover, .pxc-cfg-btn:hover, .pxc-cr-yaml-btn:hover { color: #0f766e; }
+.pxc-cr-name-cell { font-weight: 600; }
+.pod-log-btn { font: inherit; font-size: 0.82rem; color: #0d9488; text-decoration: underline; cursor: pointer; background: none; border: none; padding: 0; }
+.pxc-cfg-cell { max-width: 28rem; vertical-align: top; }
+.pxc-cfg-snippet { white-space: pre-wrap; margin: 0 0 0.4rem; font-size: 0.78rem; max-height: calc(1.4em * 5); overflow: hidden; font-family: var(--mono); color: var(--ink-soft); }
+.pxc-cfg-full-store { display: none; }
+.pxc-cfg-dialog, dialog.pxc-cfg-dialog { max-width: min(92vw, 56rem); width: 100%; border: 1px solid var(--border); border-radius: var(--radius); padding: 0; box-shadow: var(--shadow); }
+.pxc-cfg-dialog::backdrop { background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(2px); }
+.pxc-cfg-dialog-inner { padding: 1.1rem; }
+.pxc-cfg-dialog-title { margin: 0 0 0.4rem; font-size: 0.95rem; }
+.pxc-cfg-dialog-pre { white-space: pre-wrap; max-height: 70vh; overflow: auto; margin: 0.4rem 0; font-size: 0.8rem; border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem; background: var(--row-alt); font-family: var(--mono); }
+.pxc-cfg-dialog-inner button { font: inherit; margin-top: 0.2rem; padding: 0.4rem 0.85rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.pxc-cfg-dialog-inner button:hover { background: var(--row-alt); }
+/* PXC pod-logs block (embedded) — align with design tokens */
+#pxc-pod-logs .pxc-plg-table th { background: #ecfeff !important; color: #134e4a !important; }
+#pxc-pod-logs .pxc-gle-wrap { border-radius: var(--radius-sm) !important; }
+#pxc-log-modal-pxc .pxc-plg-dlg, #pxc-gle-modal-pxc .pxc-gle-dlg { border-radius: var(--radius) !important; }
+/* Pluggable collector output (no outer title) */
+.report-subsection {
+  margin: 2.25rem 0 0;
+  padding: 0.9rem 0 0.25rem;
+  border-top: 1px solid var(--border);
+  clear: both;
+}
+h3.addl-h3 {
+  font-size: 1.02rem;
+  font-weight: 650;
+  color: var(--ink-soft);
+  margin: 0 0 0.4rem;
+}
+.pxc-cfg-openwrap { margin-top: 0.35rem; }
+@media print {
+  body { background: #fff; }
+  .report-shell { max-width: none; padding: 0.5rem; }
+  .report-card, .report-section, .report-subsection, .nodes-coll, table.pxc-inner-table { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="report-shell">
+<header class="report-masthead">
+<p class="report-kicker">pt-k8s-summary</p>
+<h1 class="report-title">Cluster summary</h1>
+</header>
+<section class="report-card">
+<h2>Processing details</h2>
+<p class="meta" style="margin-top:0">Everything below was derived from the following inputs (typical layout from <code>pt-k8s-debug-collector</code>).</p>
+<ul class="proc-list">
+<li><strong>Source</strong>: {{ .Proc.SourceArchive }}</li>
+<li><strong>Dump root</strong>: <code>{{ .Proc.DumpRootDisplay }}</code></li>
+<li><strong>Nodes manifest</strong>: <code>{{ .Proc.NodesPathDisplay }}</code></li>
+<li><strong><code>perconaxtradbclusters.pxc.percona.com.yaml</code> files</strong> ({{ len .Proc.PXCYAMLRelPaths }}):{{ if .Proc.PXCYAMLRelPaths }}
+<ul class="proc-list">{{ range .Proc.PXCYAMLRelPaths }}<li><code>{{ . }}</code></li>{{ end }}</ul>{{ else }} <em>none found under the dump root</em>{{ end }}</li>
+{{ if .Proc.HasErrorsFile }}
+<li><strong>Collector <code>errors.txt</code></strong>: present{{ if .Proc.CollectorErrors }} — use <strong>View errors</strong> under Processing details to read the excerpt{{ end }}</li>
+{{ else }}
+<li><strong>Collector <code>errors.txt</code></strong>: not present at dump root</li>
+{{ end }}
+{{ if .Proc.GaleraSince }}
+<li><strong><code>pt-galera-log-explainer</code> <code>--since</code></strong>: <code>{{ .Proc.GaleraSince }}</code> (only log lines on or after this time in the member <code>mysqld-error.log</code> files)</li>
+{{ end }}
+</ul>
+{{ if .Proc.CollectorErrors }}
+<p class="collector-err-teaser"><button type="button" class="collector-err-btn" id="collector-err-open">View errors</button> <span class="collector-err-teaser-txt">Collector <code>errors.txt</code> excerpt (may be truncated for this report).</span></p>
+<pre id="collector-err-stash" class="collector-err-stash">{{ .Proc.CollectorErrors }}</pre>
+<div id="collector-err-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="collector-err-title">
+<div class="collector-err-dlg" role="document" tabindex="-1">
+<div class="collector-err-dlg-h"><h3 class="collector-err-dlg-t" id="collector-err-title">Collector <code>errors.txt</code></h3><button type="button" class="collector-err-dlg-x" data-collector-err-x="" aria-label="Close">×</button></div>
+<pre class="collector-err-dlg-body" id="collector-err-body" tabindex="0" aria-live="polite" aria-labelledby="collector-err-title"></pre>
+</div></div>
+<script>(function(){
+  var mod=document.getElementById("collector-err-modal");
+  var btn=document.getElementById("collector-err-open");
+  var stash=document.getElementById("collector-err-stash");
+  var body=document.getElementById("collector-err-body");
+  if(!mod||!btn||!stash||!body)return;
+  function openE(){
+    body.textContent=stash.textContent;
+    mod.setAttribute("aria-hidden","false");
+    body.focus();
+  }
+  function closeE(){
+    mod.setAttribute("aria-hidden","true");
+    body.textContent="";
+  }
+  btn.addEventListener("click", openE);
+  mod.querySelectorAll("[data-collector-err-x]").forEach(function(el){ el.addEventListener("click", closeE); });
+  mod.addEventListener("click", function(ev){ if(ev.target===mod) closeE(); });
+  document.addEventListener("keydown", function(ev){
+    if(ev.key==="Escape" && mod.getAttribute("aria-hidden")==="false") closeE();
+  });
+})();</script>
+{{ end }}
+</section>

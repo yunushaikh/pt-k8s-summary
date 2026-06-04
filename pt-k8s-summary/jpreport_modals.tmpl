@@ -1,0 +1,267 @@
+<dialog id="pxc-cfg-dialog" class="pxc-cfg-dialog">
+<div class="pxc-cfg-dialog-inner">
+<p class="pxc-cfg-dialog-title"><strong>MySQL configuration</strong> (<code>spec.pxc.configuration</code>)</p>
+<pre id="pxc-cfg-dialog-pre" class="pxc-cfg-dialog-pre"></pre>
+<button type="button" class="pxc-cfg-dialog-close">Close</button>
+</div>
+</dialog>
+<dialog id="pod-log-dialog" class="pxc-cfg-dialog">
+<div class="pxc-cfg-dialog-inner">
+<p class="pxc-cfg-dialog-title">Pod logs: <strong id="pod-log-dialog-title"></strong></p>
+<p class="meta">From dump path <code>&lt;namespace&gt;/&lt;pod&gt;/logs.txt</code> (or <code>log</code>).</p>
+<pre id="pod-log-dialog-pre" class="pxc-cfg-dialog-pre"></pre>
+<button type="button" class="pod-log-dialog-close">Close</button>
+</div>
+</dialog>
+<dialog id="pod-spec-dialog" class="pxc-cfg-dialog">
+<div class="pxc-cfg-dialog-inner">
+<p class="pxc-cfg-dialog-title">Containers: <strong id="pod-spec-dialog-title"></strong></p>
+<p class="meta">From <code>spec.initContainers</code> and <code>spec.containers</code> in <code>pods.yaml</code> (image and resources per container).</p>
+<pre id="pod-spec-dialog-pre" class="pxc-cfg-dialog-pre"></pre>
+<button type="button" class="pod-spec-dialog-close">Close</button>
+</div>
+</dialog>
+<dialog id="pod-yaml-dialog" class="pxc-cfg-dialog">
+<div class="pxc-cfg-dialog-inner">
+<p class="pxc-cfg-dialog-title">Pod YAML: <strong id="pod-yaml-dialog-title"></strong></p>
+<p class="meta">From on-disk <code>&lt;namespace&gt;/&lt;pod&gt;/pod.yaml</code> when present; otherwise YAML marshaled from the merged <code>pods.yaml</code> entry (fields depend on what the collector parsed).</p>
+<pre id="pod-yaml-dialog-pre" class="pxc-cfg-dialog-pre"></pre>
+<button type="button" class="pod-yaml-dialog-close">Close</button>
+</div>
+</dialog>
+<dialog id="pxc-cr-yaml-dialog" class="pxc-cfg-dialog">
+<div class="pxc-cfg-dialog-inner">
+<p class="pxc-cfg-dialog-title"><code>PerconaXtraDBCluster</code> CR: <strong id="pxc-cr-yaml-dialog-title"></strong></p>
+<p class="meta">YAML for this resource from <code>perconaxtradbclusters.pxc.percona.com.yaml</code> in the dump (one <code>items[]</code> entry; preserves fields beyond what the report parses).</p>
+<pre id="pxc-cr-yaml-dialog-pre" class="pxc-cfg-dialog-pre"></pre>
+<button type="button" class="pxc-cr-yaml-dialog-close">Close</button>
+</div>
+</dialog>
+<dialog id="backup-manifest-dialog" class="pxc-cfg-dialog">
+<div class="pxc-cfg-dialog-inner">
+<p class="pxc-cfg-dialog-title"><code>PerconaXtraDBClusterBackup</code>: <strong id="backup-manifest-dialog-title"></strong></p>
+<p class="meta">YAML for this resource from <code>perconaxtradbclusterbackups.pxc.percona.com.yaml</code> in the dump (one document).</p>
+<pre id="backup-manifest-dialog-pre" class="pxc-cfg-dialog-pre"></pre>
+<button type="button" class="backup-manifest-dialog-close">Close</button>
+</div>
+</dialog>
+<script>
+(function() {
+  var cfgDlg = document.getElementById('pxc-cfg-dialog');
+  var cfgPre = document.getElementById('pxc-cfg-dialog-pre');
+  var logDlg = document.getElementById('pod-log-dialog');
+  var logPre = document.getElementById('pod-log-dialog-pre');
+  var logTitle = document.getElementById('pod-log-dialog-title');
+  var specDlg = document.getElementById('pod-spec-dialog');
+  var specPre = document.getElementById('pod-spec-dialog-pre');
+  var specTitle = document.getElementById('pod-spec-dialog-title');
+  var yamlDlg = document.getElementById('pod-yaml-dialog');
+  var yamlPre = document.getElementById('pod-yaml-dialog-pre');
+  var yamlTitle = document.getElementById('pod-yaml-dialog-title');
+  var crYamlDlg = document.getElementById('pxc-cr-yaml-dialog');
+  var crYamlPre = document.getElementById('pxc-cr-yaml-dialog-pre');
+  var crYamlTitle = document.getElementById('pxc-cr-yaml-dialog-title');
+  var backupDlg = document.getElementById('backup-manifest-dialog');
+  var backupPre = document.getElementById('backup-manifest-dialog-pre');
+  var backupTitle = document.getElementById('backup-manifest-dialog-title');
+  document.body.addEventListener('click', function(ev) {
+    var t = ev.target;
+    if (!t) return;
+    if (t.closest) {
+      var ccfg = t.closest('.pxc-cfg-btn');
+      if (ccfg) {
+        if (!cfgDlg || !cfgPre) return;
+        var id = ccfg.getAttribute('data-target');
+        var src = id ? document.getElementById(id + '-full') : null;
+        if (src) { cfgPre.textContent = src.value; cfgDlg.showModal(); }
+        return;
+      }
+    }
+    if (t.classList && t.classList.contains('pxc-cfg-btn')) {
+      if (!cfgDlg || !cfgPre) return;
+      var id2 = t.getAttribute('data-target');
+      var src2 = id2 ? document.getElementById(id2 + '-full') : null;
+      if (src2) { cfgPre.textContent = src2.value; cfgDlg.showModal(); }
+      return;
+    }
+    if (t.classList && t.classList.contains('pxc-cfg-dialog-close')) {
+      if (cfgDlg) cfgDlg.close();
+      return;
+    }
+    if (t.closest) {
+      var plog = t.closest('.pod-log-btn');
+      if (plog) {
+        if (!logDlg || !logPre) return;
+        var lidP = plog.getAttribute('data-target');
+        var lsrcP = lidP ? document.getElementById(lidP + '-full') : null;
+        if (lsrcP) {
+          if (logTitle) logTitle.textContent = plog.getAttribute('data-pod-name') || '';
+          logPre.textContent = lsrcP.value;
+          logDlg.showModal();
+        }
+        return;
+      }
+    }
+    if (t.classList && t.classList.contains('pod-log-btn')) {
+      if (!logDlg || !logPre) return;
+      var lid = t.getAttribute('data-target');
+      var lsrc = lid ? document.getElementById(lid + '-full') : null;
+      if (lsrc) {
+        if (logTitle) logTitle.textContent = t.getAttribute('data-pod-name') || '';
+        logPre.textContent = lsrc.value;
+        logDlg.showModal();
+      }
+      return;
+    }
+    if (t.closest) {
+      var bmf = t.closest('.backup-manifest-btn');
+      if (bmf) {
+        if (!backupDlg || !backupPre) return;
+        var bidB = bmf.getAttribute('data-target');
+        var bsrcB = bidB ? document.getElementById(bidB + '-full') : null;
+        if (bsrcB) {
+          if (backupTitle) backupTitle.textContent = bmf.getAttribute('data-backup-display') || '';
+          backupPre.textContent = bsrcB.value;
+          backupDlg.showModal();
+        }
+        return;
+      }
+    }
+    if (t.classList && t.classList.contains('backup-manifest-btn')) {
+      if (!backupDlg || !backupPre) return;
+      var bid = t.getAttribute('data-target');
+      var bsrc = bid ? document.getElementById(bid + '-full') : null;
+      if (bsrc) {
+        if (backupTitle) backupTitle.textContent = t.getAttribute('data-backup-display') || '';
+        backupPre.textContent = bsrc.value;
+        backupDlg.showModal();
+      }
+      return;
+    }
+    if (t.closest) {
+      var pnm = t.closest('.pod-name-btn');
+      if (pnm) {
+        if (!specDlg || !specPre) return;
+        var sidN = pnm.getAttribute('data-target');
+        var ssrcN = sidN ? document.getElementById(sidN + '-full') : null;
+        if (ssrcN) {
+          if (specTitle) specTitle.textContent = pnm.getAttribute('data-pod-name') || '';
+          specPre.textContent = ssrcN.value;
+          specDlg.showModal();
+        }
+        return;
+      }
+    }
+    if (t.classList && t.classList.contains('pod-name-btn')) {
+      if (!specDlg || !specPre) return;
+      var sid = t.getAttribute('data-target');
+      var ssrc = sid ? document.getElementById(sid + '-full') : null;
+      if (ssrc) {
+        if (specTitle) specTitle.textContent = t.getAttribute('data-pod-name') || '';
+        specPre.textContent = ssrc.value;
+        specDlg.showModal();
+      }
+      return;
+    }
+    if (t.closest) {
+      var pyb = t.closest('.pxc-plg-pod-yaml-btn');
+      if (pyb) {
+        if (!yamlDlg || !yamlPre) return;
+        var yid = pyb.getAttribute('data-target');
+        var ysrc = yid ? document.getElementById(yid + '-full') : null;
+        if (ysrc) {
+          if (yamlTitle) yamlTitle.textContent = pyb.getAttribute('data-plg-pod-label') || '';
+          yamlPre.textContent = ysrc.value;
+          yamlDlg.showModal();
+        }
+        return;
+      }
+    }
+    if (t.classList && t.classList.contains('pxc-plg-pod-yaml-btn')) {
+      if (!yamlDlg || !yamlPre) return;
+      var yid2 = t.getAttribute('data-target');
+      var ysrc2 = yid2 ? document.getElementById(yid2 + '-full') : null;
+      if (ysrc2) {
+        if (yamlTitle) yamlTitle.textContent = t.getAttribute('data-plg-pod-label') || '';
+        yamlPre.textContent = ysrc2.value;
+        yamlDlg.showModal();
+      }
+      return;
+    }
+    if (t.closest) {
+      var cry = t.closest('.pxc-cr-yaml-btn');
+      if (cry) {
+        if (!crYamlDlg || !crYamlPre) return;
+        var cid = cry.getAttribute('data-target');
+        var csrc = cid ? document.getElementById(cid + '-full') : null;
+        if (csrc) {
+          if (crYamlTitle) crYamlTitle.textContent = cry.getAttribute('data-cr-yaml-label') || '';
+          crYamlPre.textContent = csrc.value;
+          crYamlDlg.showModal();
+        }
+        return;
+      }
+    }
+    if (t.classList && t.classList.contains('pxc-cr-yaml-btn')) {
+      if (!crYamlDlg || !crYamlPre) return;
+      var cid2 = t.getAttribute('data-target');
+      var csrc2 = cid2 ? document.getElementById(cid2 + '-full') : null;
+      if (csrc2) {
+        if (crYamlTitle) crYamlTitle.textContent = t.getAttribute('data-cr-yaml-label') || '';
+        crYamlPre.textContent = csrc2.value;
+        crYamlDlg.showModal();
+      }
+      return;
+    }
+    if (t.classList.contains('pod-log-dialog-close')) {
+      if (logDlg) logDlg.close();
+      return;
+    }
+    if (t.classList.contains('pod-spec-dialog-close')) {
+      if (specDlg) specDlg.close();
+      return;
+    }
+    if (t.classList.contains('pod-yaml-dialog-close')) {
+      if (yamlDlg) yamlDlg.close();
+      return;
+    }
+    if (t.classList.contains('pxc-cr-yaml-dialog-close')) {
+      if (crYamlDlg) crYamlDlg.close();
+      return;
+    }
+    if (t.classList.contains('backup-manifest-dialog-close')) {
+      if (backupDlg) backupDlg.close();
+    }
+  });
+  if (cfgDlg) {
+    cfgDlg.addEventListener('click', function(ev) {
+      if (ev.target === cfgDlg) cfgDlg.close();
+    });
+  }
+  if (logDlg) {
+    logDlg.addEventListener('click', function(ev) {
+      if (ev.target === logDlg) logDlg.close();
+    });
+  }
+  if (specDlg) {
+    specDlg.addEventListener('click', function(ev) {
+      if (ev.target === specDlg) specDlg.close();
+    });
+  }
+  if (yamlDlg) {
+    yamlDlg.addEventListener('click', function(ev) {
+      if (ev.target === yamlDlg) yamlDlg.close();
+    });
+  }
+  if (crYamlDlg) {
+    crYamlDlg.addEventListener('click', function(ev) {
+      if (ev.target === crYamlDlg) crYamlDlg.close();
+    });
+  }
+  if (backupDlg) {
+    backupDlg.addEventListener('click', function(ev) {
+      if (ev.target === backupDlg) backupDlg.close();
+    });
+  }
+})();
+</script>

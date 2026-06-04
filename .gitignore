@@ -1,0 +1,29 @@
+# Generated HTML reports (keep embedded templates in pt-k8s-summary/)
+*.html
+!pt-k8s-summary/report_*.html
+
+# Default report output directory
+/reports/
+
+# Local cluster dump fixtures / input data
+/cluster-dump/
+*.tar.gz
+*.tgz
+
+# Build artifacts
+/pt-k8s-summary
+/pt-k8s-summary-code/pt-k8s-summary
+/backups/
+*.bak
+
+# Logs
+nohup.out
+*.log
+
+# macOS metadata
+._*
+.DS_Store
+
+# Editor / OS
+*.swp
+*~
