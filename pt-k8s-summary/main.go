@@ -274,6 +274,12 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		return fmt.Errorf("invalid arguments (expected an archive or -dump)")
 	}
 
+	if dir := filepath.Dir(out); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create output directory: %w", err)
+		}
+	}
+
 	if nodesFlag != "" {
 		var err error
 		nodesAbs, err = filepath.Abs(nodesFlag)
@@ -318,7 +324,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 	var podLogHTML htempl.HTML
 	var hasPodLogs bool
-	if h, err := collector.GatherPodLogsForReportHTML(dumpAbs, proc.GaleraSince, podsData, now); err != nil {
+	if h, err := collector.GatherPodLogsForReportHTML(dumpAbs, proc.GaleraSince, out, podsData, now); err != nil {
 		fmt.Fprintf(os.Stderr, "pod logs: %v\n", err)
 	} else if h != "" {
 		podLogHTML = htempl.HTML(h)
@@ -366,12 +372,6 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	tmpl, err := template.New("report").Parse(htmlTemplate)
 	if err != nil {
 		return fmt.Errorf("parse template: %w", err)
-	}
-
-	if dir := filepath.Dir(out); dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("create output directory: %w", err)
-		}
 	}
 
 	outF, err := os.Create(out)

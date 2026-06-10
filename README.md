@@ -27,11 +27,18 @@ cd pt-k8s-summary
 
 ## Build
 
-From the repository root:
+The Go module lives in `pt-k8s-summary/` (where `go.mod` is). The repo root includes a `go.work` file so you can build from the repository root without `cd`:
 
 ```bash
 mkdir -p bin
 go build -o bin/pt-k8s-summary ./pt-k8s-summary
+```
+
+Alternatively, build from inside the module:
+
+```bash
+cd pt-k8s-summary
+go build -o ../bin/pt-k8s-summary .
 ```
 
 Verify the binary:
@@ -42,16 +49,16 @@ Verify the binary:
 
 ### Alternative: build script
 
-The module includes a helper script that backs up any previous binary and builds a new one:
+The module includes a helper script that backs up any previous binary and builds into `bin/`:
 
 ```bash
 ./pt-k8s-summary/build.sh
 ```
 
-Because the module directory is also named `pt-k8s-summary`, the script writes the binary to `pt-k8s-summary/pt-k8s-summary` (not the repo root). Run it as:
+Then run:
 
 ```bash
-./pt-k8s-summary/pt-k8s-summary -h
+./bin/pt-k8s-summary -h
 ```
 
 ## Usage
@@ -105,6 +112,18 @@ To limit Galera log analysis to events on or after a given time:
 | `-certified-images` | Fetch and compare Percona certified images (default: `true`) |
 
 Positional argument: cluster dump archive (`.tar.gz` or `.tgz`). Use either the archive **or** `-dump`, not both.
+
+## Large pod logs
+
+Pod logs embedded in the HTML are capped at ~750 KiB per file so the report stays usable in a browser. When a log exceeds that limit, the tool writes the **full** raw and formatted copies next to the report:
+
+```
+reports/my-report.html
+reports/my-report_logs/<namespace>/<pod>/…/mysqld-error.log
+reports/my-report_logs/<namespace>/<pod>/…/mysqld-error.log.formatted
+```
+
+In the report viewer, truncated logs show a banner with **Load full**, **Open in new tab**, and **Download**. Keep the `_logs` directory alongside the HTML when sharing the report.
 
 ## Project layout
 

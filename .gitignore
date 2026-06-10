@@ -4,6 +4,7 @@
 
 # Default report output directory
 /reports/
+*_logs/
 
 # Local cluster dump fixtures / input data
 /cluster-dump/
