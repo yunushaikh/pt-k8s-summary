@@ -15,13 +15,14 @@ import (
 )
 
 // GatherPodLogsForReportHTML lists PXC-related pod folders, log files, optional K8s status from pods.yaml,
-// and formatted / full modal views. Returns "" when no matching log files exist.
-func GatherPodLogsForReportHTML(dumpRoot, galeraSince string, pods *jpreport.PodLoader, now time.Time) (string, error) {
+// and formatted / full modal views. reportOutPath is the HTML output path; when a log exceeds embed limits,
+// full copies are written beside the report under {stem}_logs/ and linked from the modal. Returns "" when no matching log files exist.
+func GatherPodLogsForReportHTML(dumpRoot, galeraSince, reportOutPath string, pods *jpreport.PodLoader, now time.Time) (string, error) {
 	var k8s map[string]jpreport.PodK8sMeta
 	if pods != nil {
 		k8s = pods.K8sMetaByPod(dumpRoot, now)
 	}
-	return gatherPodLogsSectionHTML(dumpRoot, galeraSince, k8s, pods)
+	return gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath, k8s, pods)
 }
 
 const pxcLogMaxBytes = 750 * 1024 // per file embed
@@ -29,13 +30,15 @@ const pxcLogMaxRunes  = 400_000
 
 // podLogFile holds one log file's embedded text (cleaned + raw) for the static report.
 type podLogFile struct {
-	RelInPod  string
-	RelInDump string
-	Bytes     int
-	LinesFmt  int
-	Trunc     bool
-	EscClean  string
-	EscRaw    string
+	RelInPod      string
+	RelInDump     string
+	Bytes         int
+	LinesFmt      int
+	Trunc         bool
+	EscClean      string
+	EscRaw        string
+	FullRawHref   string // relative URL from report HTML; set when embed is truncated
+	FullCleanHref string
 }
 
 // podLogRow is one table row (one PXC pod with one or more log files).
@@ -184,6 +187,44 @@ func readAndLimit(rawBytes []byte) (raw string, trunc bool) {
 	return string(rawBytes), false
 }
 
+func reportLogAssetsDir(reportOutPath string) string {
+	ext := filepath.Ext(reportOutPath)
+	base := strings.TrimSuffix(reportOutPath, ext)
+	return base + "_logs"
+}
+
+func hrefFromReportToAsset(reportOutPath, assetPath string) string {
+	reportDir := filepath.Dir(reportOutPath)
+	rel, err := filepath.Rel(reportDir, assetPath)
+	if err != nil {
+		return ""
+	}
+	return filepath.ToSlash(rel)
+}
+
+func writePodLogSidecars(reportOutPath, relDump string, rawBytes []byte, cleanFull string) (rawHref, cleanHref string, err error) {
+	assetsDir := reportLogAssetsDir(reportOutPath)
+	rawPath := filepath.Join(assetsDir, filepath.FromSlash(relDump))
+	if err := os.MkdirAll(filepath.Dir(rawPath), 0o755); err != nil {
+		return "", "", err
+	}
+	if err := os.WriteFile(rawPath, rawBytes, 0o644); err != nil {
+		return "", "", err
+	}
+	cleanPath := rawPath + ".formatted"
+	if err := os.WriteFile(cleanPath, []byte(cleanFull), 0o644); err != nil {
+		return "", "", err
+	}
+	return hrefFromReportToAsset(reportOutPath, rawPath), hrefFromReportToAsset(reportOutPath, cleanPath), nil
+}
+
+func logNeedsTruncation(rawBytes []byte) bool {
+	if len(rawBytes) > pxcLogMaxBytes {
+		return true
+	}
+	return utf8.RuneCount(rawBytes) > pxcLogMaxRunes
+}
+
 func capRunes(s string) string {
 	if utf8.RuneCountInString(s) <= pxcLogMaxRunes {
 		return s
@@ -191,7 +232,7 @@ func capRunes(s string) string {
 	return string([]rune(s)[:pxcLogMaxRunes]) + "\n… [truncated for report embed]"
 }
 
-func findPodLogRows(dumpRoot string) ([]podLogRow, error) {
+func findPodLogRows(dumpRoot, reportOutPath string) ([]podLogRow, error) {
 	ents, err := os.ReadDir(dumpRoot)
 	if err != nil {
 		return nil, err
@@ -243,19 +284,29 @@ func findPodLogRows(dumpRoot string) ([]podLogRow, error) {
 			}
 			relDump, _ := filepath.Rel(dumpRoot, abs)
 			relDump = filepath.ToSlash(relDump)
-			raw, t1 := readAndLimit(data)
+			cleanFull, lineCount := cleanPodLogText(string(data))
+			trunc := logNeedsTruncation(data)
+			var fullRawHref, fullCleanHref string
+			if trunc && reportOutPath != "" {
+				fullRawHref, fullCleanHref, err = writePodLogSidecars(reportOutPath, relDump, data, cleanFull)
+				if err != nil {
+					return nil, fmt.Errorf("write sidecar for %s: %w", relDump, err)
+				}
+			}
+			raw, _ := readAndLimit(data)
 			raw = capRunes(raw)
-			clean, lineCount := cleanPodLogText(raw)
+			clean, _ := cleanPodLogText(raw)
 			clean = capRunes(clean)
-			t2 := t1
 			files = append(files, podLogFile{
-				RelInPod:  relInPod,
-				RelInDump: relDump,
-				Bytes:     len(data),
-				LinesFmt:  lineCount,
-				Trunc:     t2,
-				EscClean:  html.EscapeString(clean),
-				EscRaw:    html.EscapeString(raw),
+				RelInPod:      relInPod,
+				RelInDump:     relDump,
+				Bytes:         len(data),
+				LinesFmt:      lineCount,
+				Trunc:         trunc,
+				EscClean:      html.EscapeString(clean),
+				EscRaw:        html.EscapeString(raw),
+				FullRawHref:   fullRawHref,
+				FullCleanHref: fullCleanHref,
 			})
 		}
 		out = append(out, podLogRow{
@@ -267,8 +318,8 @@ func findPodLogRows(dumpRoot string) ([]podLogRow, error) {
 	return out, nil
 }
 
-func gatherPodLogsSectionHTML(dumpRoot, galeraSince string, k8s map[string]jpreport.PodK8sMeta, pods *jpreport.PodLoader) (string, error) {
-	rows, err := findPodLogRows(dumpRoot)
+func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s map[string]jpreport.PodK8sMeta, pods *jpreport.PodLoader) (string, error) {
+	rows, err := findPodLogRows(dumpRoot, reportOutPath)
 	if err != nil {
 		return "", err
 	}
@@ -345,7 +396,12 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince string, k8s map[string]jprep
 #pxc-log-modal-pxc { position: fixed; inset: 0; z-index: 9998; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.45); opacity: 0; pointer-events: none; transition: opacity 0.12s; }
 #pxc-log-modal-pxc[aria-hidden="false"] { opacity: 1; pointer-events: auto; }
 #pxc-log-modal-pxc .pxc-plg-dlg { background: #fff; color: #0f172a; max-width: min(96vw, 62rem); max-height: 88vh; display: flex; flex-direction: column; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); overflow: hidden; border: 1px solid #e2e8f0; }
-#pxc-log-modal-pxc .pxc-plg-dlg-h { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.55rem 0.9rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+#pxc-log-modal-pxc .pxc-plg-dlg-h { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.55rem 0.9rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
+#pxc-log-modal-pxc .pxc-plg-dlg-bar { display: none; width: 100%; margin: 0; padding: 0.45rem 0.55rem; font-size: 0.68rem; line-height: 1.4; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; }
+#pxc-log-modal-pxc .pxc-plg-dlg-bar.pxc-plg-dlg-bar--show { display: block; }
+#pxc-log-modal-pxc .pxc-plg-dlg-bar a, #pxc-log-modal-pxc .pxc-plg-dlg-bar button { font: inherit; font-size: inherit; font-weight: 650; color: #0369a1; background: none; border: none; padding: 0; margin: 0 0.35rem 0 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+#pxc-log-modal-pxc .pxc-plg-dlg-bar a:hover, #pxc-log-modal-pxc .pxc-plg-dlg-bar button:hover { color: #0c4a6e; }
+#pxc-log-modal-pxc .pxc-plg-dlg-bar .pxc-plg-dlg-bar-sep { color: #cbd5e1; margin: 0 0.25rem; }
 #pxc-log-modal-pxc .pxc-plg-dlg-t { font-size: 0.92rem; font-weight: 650; margin: 0; line-height: 1.3; }
 #pxc-log-modal-pxc .pxc-plg-dlg-c { display: block; width: 2.25rem; height: 2.25rem; line-height: 1; border: none; background: transparent; color: #64748b; font-size: 1.5rem; cursor: pointer; border-radius: 8px; }
 #pxc-log-modal-pxc .pxc-plg-dlg-c:hover { background: #e2e8f0; color: #0f172a; }
@@ -372,7 +428,7 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince string, k8s map[string]jprep
 #pxc-gle-modal-pxc .pxc-gle-tab { margin: 0; padding: 0.65rem 0.8rem; overflow: auto; max-height: calc(92vh - 2.6rem); font-size: 0.66rem; line-height: 1.1; font-family: ui-monospace, Menlo, "Consolas", "Liberation Mono", monospace; white-space: pre; tab-size: 2; word-break: normal; color: #0f172a; background: #fff; border: none; }
 #pxc-pod-logs .pxc-gle-blob { display: none; }
 </style>`)
-	b.WriteString(`<table class="pxc-plg-table"><thead><tr><th>Namespace</th><th>Name</th><th>Ready</th><th>Status</th><th>Restarts</th><th>Age</th><th>IP</th><th>Node</th><th>Log file</th><th class="pxc-plg-view">View<span class="pxc-plg-helptip"><button type="button" class="pxc-plg-helptip__btn" id="pxc-plg-helptip-btn" aria-expanded="false" aria-controls="pxc-plg-helptip-box" title="What Formatted and Full mean (hover or click)">i</button><div class="pxc-plg-helptip__box" id="pxc-plg-helptip-box" role="tooltip" aria-hidden="true"><strong>Formatted</strong> &mdash; Drops shell <code>set -x</code> noise and expands one-line JSON log lines so the file is easier to read.<br><br><strong>Full</strong> &mdash; The exact file content as collected, with no line filtering (subject to the same per-file size cap in this report; use the raw dump to see everything).</div></span></th></tr></thead><tbody>`)
+	b.WriteString(`<table class="pxc-plg-table"><thead><tr><th>Namespace</th><th>Name</th><th>Ready</th><th>Status</th><th>Restarts</th><th>Age</th><th>IP</th><th>Node</th><th>Log file</th><th class="pxc-plg-view">View<span class="pxc-plg-helptip"><button type="button" class="pxc-plg-helptip__btn" id="pxc-plg-helptip-btn" aria-expanded="false" aria-controls="pxc-plg-helptip-box" title="What Formatted and Full mean (hover or click)">i</button><div class="pxc-plg-helptip__box" id="pxc-plg-helptip-box" role="tooltip" aria-hidden="true"><strong>Formatted</strong> &mdash; Drops shell <code>set -x</code> noise and expands one-line JSON log lines so the file is easier to read.<br><br><strong>Full</strong> &mdash; The exact file content as collected, with no line filtering. Large files show an in-report preview; use <strong>Load full</strong> in the modal or the sidecar links to open the complete file from the <code>_logs</code> directory next to this report.</div></span></th></tr></thead><tbody>`)
 	for podIdx, row := range rows {
 		b.WriteString(`<tr data-pxc-plg-p="`)
 		b.WriteString(esc(fmt.Sprintf("%d", podIdx)))
@@ -414,7 +470,21 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince string, k8s map[string]jprep
 			b.WriteString(esc(fmt.Sprintf("%d", fIdx)))
 			b.WriteString(`" data-fpath="`)
 			b.WriteString(esc(f.RelInPod))
-			b.WriteString(`" title="`)
+			b.WriteString(`"`)
+			if f.Trunc {
+				b.WriteString(` data-trunc="1"`)
+			}
+			if f.FullRawHref != "" {
+				b.WriteString(` data-full-raw="`)
+				b.WriteString(esc(f.FullRawHref))
+				b.WriteString(`"`)
+			}
+			if f.FullCleanHref != "" {
+				b.WriteString(` data-full-clean="`)
+				b.WriteString(esc(f.FullCleanHref))
+				b.WriteString(`"`)
+			}
+			b.WriteString(` title="`)
 			b.WriteString(esc(optTitle))
 			b.WriteString(`">`)
 			b.WriteString(esc(f.RelInPod + " | " + humanSize(f.Bytes)))
@@ -452,10 +522,11 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince string, k8s map[string]jprep
 	}
 	b.WriteString(`<div id="pxc-log-modal-pxc" class="pxc-plg-backdrop" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Pod log viewer">`)
 	b.WriteString(`<div class="pxc-plg-dlg" role="document" tabindex="-1">`)
-	b.WriteString(`<div class="pxc-plg-dlg-h"><h4 class="pxc-plg-dlg-t" id="pxc-plg-dlg-title-pxc">Log</h4><button type="button" class="pxc-plg-dlg-c" data-pxc-plg-x="" aria-label="Close">×</button></div>`)
+	b.WriteString(`<div class="pxc-plg-dlg-h"><h4 class="pxc-plg-dlg-t" id="pxc-plg-dlg-title-pxc">Log</h4><button type="button" class="pxc-plg-dlg-c" data-pxc-plg-x="" aria-label="Close">×</button>`)
+	b.WriteString(`<p class="pxc-plg-dlg-bar" id="pxc-plg-dlg-bar-pxc" aria-live="polite"></p></div>`)
 	b.WriteString(`<pre class="pxc-plg-pre" id="pxc-plg-dlg-body-pxc" tabindex="0" aria-live="polite" aria-atomic="true" aria-labelledby="pxc-plg-dlg-title-pxc">`)
 	b.WriteString(`</pre></div></div>`)
-	b.WriteString(`<p class="pxc-plg-note">PXC-related pods (name contains <code>-pxc-</code>, <code>pxc-operator</code>, <code>xtradb-cluster-operator</code>, or <code>haproxy</code> / <code>proxysql</code>) are scanned for log files: <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under the pod directory (e.g. <code>var/lib/mysql/mysqld-error.log</code>). Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content, subject to the same size cap for embedding—use the raw cluster dump to inspect without limits).</p>`)
+	b.WriteString(`<p class="pxc-plg-note">PXC-related pods (name contains <code>-pxc-</code>, <code>pxc-operator</code>, <code>xtradb-cluster-operator</code>, or <code>haproxy</code> / <code>proxysql</code>) are scanned for log files: <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under the pod directory (e.g. <code>var/lib/mysql/mysqld-error.log</code>). Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB are previewed in the HTML; the complete file is copied to a sibling <code>_logs</code> directory next to the report (same layout as the dump) and linked from the viewer.</p>`)
 	b.WriteString(`<div class="pxc-gle-wrap"><h4 class="pxc-gle-h4"><a href="https://docs.percona.com/percona-toolkit/pt-galera-log-explainer.html" rel="noopener noreferrer" target="_blank">pt-galera-log-explainer</a> <code>list --all</code></h4>`)
 	if strings.TrimSpace(galeraSince) != "" {
 		b.WriteString(`<p class="pxc-gle-meta" style="margin:0 0 0.5rem 0;">` + esc("--since "+galeraSince) + `</p>`)
@@ -516,17 +587,58 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince string, k8s map[string]jprep
   if(!m) return;
   var body=document.getElementById("pxc-plg-dlg-body-pxc");
   var title=document.getElementById("pxc-plg-dlg-title-pxc");
-  function openLog(p,fi,mode,sub){
+  var bar=document.getElementById("pxc-plg-dlg-bar-pxc");
+  var loadFullHref="";
+  function hideBar(){
+    loadFullHref="";
+    if(bar){
+      bar.classList.remove("pxc-plg-dlg-bar--show");
+      bar.textContent="";
+    }
+  }
+  function showTruncBar(fullHref, mode){
+    if(!bar || !fullHref) return;
+    loadFullHref=fullHref;
+    bar.classList.add("pxc-plg-dlg-bar--show");
+    bar.innerHTML="Preview only (file exceeds embed limit). "+
+      "<button type=\"button\" id=\"pxc-plg-load-full\">Load full</button>"+
+      "<span class=\"pxc-plg-dlg-bar-sep\">|</span>"+
+      "<a href=\""+fullHref+"\" target=\"_blank\" rel=\"noopener\">Open in new tab</a>"+
+      "<span class=\"pxc-plg-dlg-bar-sep\">|</span>"+
+      "<a href=\""+fullHref+"\" download>Download</a>";
+    var btn=document.getElementById("pxc-plg-load-full");
+    if(btn){
+      btn.addEventListener("click", function(){
+        body.textContent="Loading full log…";
+        fetch(fullHref).then(function(r){
+          if(!r.ok) throw new Error("HTTP "+r.status);
+          return r.text();
+        }).then(function(t){
+          body.textContent=t||"(empty)";
+          bar.innerHTML="Showing full log from sidecar file. "+
+            "<a href=\""+fullHref+"\" target=\"_blank\" rel=\"noopener\">Open in new tab</a>"+
+            "<span class=\"pxc-plg-dlg-bar-sep\">|</span>"+
+            "<a href=\""+fullHref+"\" download>Download</a>";
+        }).catch(function(){
+          body.textContent="Could not load full log in the viewer (browser blocked fetch). Use Open in new tab or Download above.";
+        });
+      });
+    }
+  }
+  function openLog(p,fi,mode,sub,fullHref,isTrunc){
     var id="pxc-plg-stash-"+p+"-"+fi+"-"+mode;
     var s=document.getElementById(id);
+    hideBar();
     body.textContent=s?s.textContent:"(empty)";
     title.textContent=sub||"Log";
+    if(isTrunc && fullHref) showTruncBar(fullHref, mode);
     m.setAttribute("aria-hidden","false");
     body.focus();
   }
   function closeModal(){
     m.setAttribute("aria-hidden","true");
     body.textContent="";
+    hideBar();
   }
   m.querySelectorAll("[data-pxc-plg-x]").forEach(function(el){el.addEventListener("click",closeModal);});
   m.addEventListener("click",function(ev){if(ev.target===m)closeModal();});
@@ -570,12 +682,17 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince string, k8s map[string]jprep
       var opt=sel&&sel.options[sel.selectedIndex];
       var fpath=opt&&opt.getAttribute?opt.getAttribute("data-fpath"):"";
       if(!fpath && opt) fpath=opt.value;
+      var isTrunc=opt&&opt.getAttribute&&opt.getAttribute("data-trunc")==="1";
+      var fullHref="";
+      if(opt&&opt.getAttribute){
+        fullHref=mode==="clean"?opt.getAttribute("data-full-clean")||"":opt.getAttribute("data-full-raw")||"";
+      }
       var podEl=tr.querySelector("td.pxc-plg-name");
       var nsEl=tr.querySelector("td.pxc-plg-ns");
       var podT=podEl?podEl.textContent.trim():"";
       var nsT=nsEl?nsEl.textContent.trim():"";
       var sub=nsT+" / "+podT+" / "+fpath+" \u2014 "+fmtLabel;
-      openLog(p,fi,mode,sub);
+      openLog(p,fi,mode,sub,fullHref,isTrunc);
     }
     var bf=tr.querySelector(".pxc-plg-fmt");
     var br=tr.querySelector(".pxc-plg-raw");
