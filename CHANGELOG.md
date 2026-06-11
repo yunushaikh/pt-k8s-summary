@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+## [0.4.0] - 2026-06-11
 
-- Release CI no longer tries to push binaries to `main` (avoids push conflicts; binaries are committed in the release commit before tagging)
+### Added
+
+- **Multi-arch GitHub Releases:** `linux/amd64`, `linux/arm64`, `darwin/amd64` (Intel Mac), `darwin/arm64` (Apple Silicon) — Windows not built
+- `SHA256SUMS` on each release for binary verification
+- Expanded [README.md](README.md): per-platform download, macOS Gatekeeper note, flag ordering, report section guide, roadmap
+
+### Changed
+
+- **Binaries removed from git** — download only from [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases); `releases/README.md` points there
+- Maintainer release process no longer commits binaries to `main` ([docs/RELEASE.md](docs/RELEASE.md))
 
 ## [0.3.2] - 2026-06-11
 

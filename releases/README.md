@@ -1,28 +1,17 @@
 # Release binaries
 
-Pre-built **linux/amd64** binaries for [pt-k8s-summary](https://github.com/yunushaikh/pt-k8s-summary).
+Pre-built binaries are **not stored in git**. Download them from **[GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases)**.
 
-## Latest
+Each release includes:
 
-Download the current release binary:
+| Asset | Platform |
+|-------|----------|
+| `pt-k8s-summary_linux_amd64` | Linux x86_64 |
+| `pt-k8s-summary_linux_arm64` | Linux ARM64 |
+| `pt-k8s-summary_darwin_amd64` | macOS Intel |
+| `pt-k8s-summary_darwin_arm64` | macOS Apple Silicon (M1/M2/M3) |
+| `SHA256SUMS` | Checksums for all of the above |
 
-- [`pt-k8s-summary-linux-amd64`](bin/pt-k8s-summary-linux-amd64) — always updated to match the latest tagged release
+Install and usage: [README.md](../README.md#download-pre-built-binaries).
 
-Make it executable after download:
-
-```bash
-chmod +x pt-k8s-summary-linux-amd64
-./pt-k8s-summary-linux-amd64 -version
-```
-
-## Version history
-
-Each tagged release also keeps a copy under `bin/vX.Y.Z/`:
-
-| Version | Binary |
-|---------|--------|
-| v0.3.2 | [`bin/v0.3.2/pt-k8s-summary-linux-amd64`](bin/v0.3.2/pt-k8s-summary-linux-amd64) |
-| v0.3.1 | [`bin/v0.3.1/pt-k8s-summary-linux-amd64`](bin/v0.3.1/pt-k8s-summary-linux-amd64) |
-| v0.3.0 | [`bin/v0.3.0/pt-k8s-summary-linux-amd64`](bin/v0.3.0/pt-k8s-summary-linux-amd64) |
-
-Release notes for every version: [CHANGELOG.md](../CHANGELOG.md) and [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases).
+Release history: [CHANGELOG.md](../CHANGELOG.md).

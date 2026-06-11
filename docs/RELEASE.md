@@ -1,41 +1,24 @@
-# Release process
+# Release process (maintainers)
 
 ## Versioning
 
-This project uses [Semantic Versioning](https://semver.org/):
+[Semantic Versioning](https://semver.org/): PATCH = fixes, MINOR = features, MAJOR = breaking changes.
 
-| Change | Bump | Example |
-|--------|------|---------|
-| Bug fix, docs, small improvement | PATCH | `0.2.0` → `0.2.1` |
-| New flag, report section, notable feature | MINOR | `0.2.1` → `0.3.0` |
-| Breaking CLI or report contract | MAJOR | `0.x` → `1.0.0` |
-
-The release version lives in [`pt-k8s-summary/internal/version/version.go`](../pt-k8s-summary/internal/version/version.go). Bump it only when cutting a release.
+Version lives in [`pt-k8s-summary/internal/version/version.go`](../pt-k8s-summary/internal/version/version.go).
 
 ## Day to day
 
-1. Implement the fix or feature on `main`.
-2. Add a one-line entry under `## [Unreleased]` in [`CHANGELOG.md`](../CHANGELOG.md) (Added / Changed / Fixed / Removed).
-3. Do **not** bump `version.go` or create tags yet.
+1. Land changes on `main`.
+2. Add entries under `## [Unreleased]` in [`CHANGELOG.md`](../CHANGELOG.md).
+3. Do **not** bump version or tag until ready to ship.
 
 ## Cutting a release
 
-When ready to ship version `X.Y.Z`:
-
-1. Move items from `[Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` in `CHANGELOG.md`.
-2. Set `Version = "X.Y.Z"` in `pt-k8s-summary/internal/version/version.go`.
-3. Build the release binary and stage it under `releases/bin/`:
-
-   ```bash
-   ./pt-k8s-summary/build.sh
-   cp bin/pt-k8s-summary releases/bin/pt-k8s-summary-linux-amd64
-   mkdir -p releases/bin/vX.Y.Z
-   cp bin/pt-k8s-summary releases/bin/vX.Y.Z/pt-k8s-summary-linux-amd64
-   chmod +x releases/bin/pt-k8s-summary-linux-amd64 releases/bin/vX.Y.Z/pt-k8s-summary-linux-amd64
-   ```
-
-4. Commit: `Release vX.Y.Z` (include `CHANGELOG.md`, `version.go`, and `releases/bin/` changes)
-5. Tag and push:
+1. Move `[Unreleased]` items to `## [X.Y.Z] - YYYY-MM-DD` in `CHANGELOG.md`.
+   - Include **user-facing** notes: what changed, how to use new behavior, any flag or workflow gotchas.
+2. Set `Version = "X.Y.Z"` in `version.go`.
+3. Commit: `Release vX.Y.Z` (source + CHANGELOG only — **no binaries in git**).
+4. Tag and push:
 
    ```bash
    git tag vX.Y.Z
@@ -43,15 +26,45 @@ When ready to ship version `X.Y.Z`:
    git push origin vX.Y.Z
    ```
 
-6. GitHub Actions (`.github/workflows/release.yml`) builds `linux/amd64`, attaches the binary to a **GitHub Release**, and uses the matching `CHANGELOG` section as release notes. Binaries under `releases/bin/` in git come from step 4 (the release commit), not from CI.
+5. GitHub Actions builds four binaries and publishes a [GitHub Release](https://github.com/yunushaikh/pt-k8s-summary/releases):
+   - `pt-k8s-summary_linux_amd64`
+   - `pt-k8s-summary_linux_arm64`
+   - `pt-k8s-summary_darwin_amd64` (Intel Mac)
+   - `pt-k8s-summary_darwin_arm64` (Apple Silicon)
+   - `SHA256SUMS`
+
+Windows is intentionally not built.
+
+## CHANGELOG tips for each release
+
+Good release notes answer:
+
+- **What** changed (features / fixes)
+- **Who cares** (backup filter, Mac download, etc.)
+- **How to use** new flags or report UI (one line if non-obvious)
+- **Breaking** behavior, if any
+
+Users read `CHANGELOG.md` on git and the same section on the GitHub Release page.
 
 ## Verify locally before tagging
 
 ```bash
 ./pt-k8s-summary/build.sh
 ./bin/pt-k8s-summary -version
+go test ./pt-k8s-summary/...
 ```
 
-## Download releases
+Optional cross-build smoke test:
 
-Published binaries and release notes: [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases).
+```bash
+cd pt-k8s-summary
+GOOS=darwin GOARCH=arm64 go build -o /tmp/pt-k8s-summary-darwin-arm64 .
+```
+
+## Design choices (for future growth)
+
+- **Binaries only on GitHub Releases** — keeps the git repo small; old versions stay on the Releases page.
+- **No Windows** — primary users are Linux/macOS k8s operators; add later if demand appears.
+- **Pure Go / CGO_ENABLED=0** — cross-compiles reliably in CI without macOS runners.
+- **Optional runtime tools** — `pt-galera-log-explainer` (Percona Toolkit) is not bundled; document in README.
+- **HTML + sidecar `_logs/`** — large logs stay beside the report; mention when sharing reports.

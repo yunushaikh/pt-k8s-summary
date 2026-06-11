@@ -26,15 +26,30 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Release version: $TAG"
 
-      - name: Build linux/amd64
+      - name: Build release binaries
         env:
           VERSION: ${{ steps.ver.outputs.tag }}
           COMMIT: ${{ github.sha }}
         run: |
+          set -euo pipefail
           cd pt-k8s-summary
-          go build -trimpath \
-            -ldflags "-s -w -X pt-k8s-summary/internal/version.Version=${VERSION} -X pt-k8s-summary/internal/version.Commit=${COMMIT::7}" \
-            -o ../pt-k8s-summary-linux-amd64 .
+          mkdir -p ../dist
+          LDFLAGS="-s -w -X pt-k8s-summary/internal/version.Version=${VERSION} -X pt-k8s-summary/internal/version.Commit=${COMMIT::7}"
+          build_one() {
+            local goos=$1 goarch=$2
+            echo "Building ${goos}/${goarch}..."
+            GOOS=$goos GOARCH=$goarch CGO_ENABLED=0 go build -trimpath \
+              -ldflags "$LDFLAGS" \
+              -o "../dist/pt-k8s-summary_${goos}_${goarch}" .
+          }
+          build_one linux amd64
+          build_one linux arm64
+          build_one darwin amd64
+          build_one darwin arm64
+          cd ../dist
+          chmod +x pt-k8s-summary_*
+          sha256sum pt-k8s-summary_* > SHA256SUMS
+          ls -la
 
       - name: Extract CHANGELOG section
         run: |
@@ -48,10 +63,30 @@ jobs:
             echo "Release notes for ${TAG} not found in CHANGELOG.md" >&2
             exit 1
           fi
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Downloads (this release)"
+            echo ""
+            echo "| Platform | Asset |"
+            echo "|----------|-------|"
+            echo "| Linux x86_64 | \`pt-k8s-summary_linux_amd64\` |"
+            echo "| Linux ARM64 | \`pt-k8s-summary_linux_arm64\` |"
+            echo "| macOS Intel | \`pt-k8s-summary_darwin_amd64\` |"
+            echo "| macOS Apple Silicon | \`pt-k8s-summary_darwin_arm64\` |"
+            echo ""
+            echo "Verify with \`SHA256SUMS\`. See [README](https://github.com/yunushaikh/pt-k8s-summary/blob/main/README.md#download-pre-built-binaries) for install and usage."
+          } >> release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           body_path: release-notes.md
-          files: pt-k8s-summary-linux-amd64
+          files: |
+            dist/pt-k8s-summary_linux_amd64
+            dist/pt-k8s-summary_linux_arm64
+            dist/pt-k8s-summary_darwin_amd64
+            dist/pt-k8s-summary_darwin_arm64
+            dist/SHA256SUMS
           generate_release_notes: false

@@ -13,6 +13,7 @@
 
 # Build artifacts
 /bin/
+/releases/bin/
 /pt-k8s-summary-code/pt-k8s-summary
 /pt-k8s-summary/pt-k8s-summary
 /backups/
