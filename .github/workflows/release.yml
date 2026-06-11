@@ -36,14 +36,6 @@ jobs:
             -ldflags "-s -w -X pt-k8s-summary/internal/version.Version=${VERSION} -X pt-k8s-summary/internal/version.Commit=${COMMIT::7}" \
             -o ../pt-k8s-summary-linux-amd64 .
 
-      - name: Stage binaries for repository
-        run: |
-          TAG="${{ steps.ver.outputs.tag }}"
-          mkdir -p "releases/bin/v${TAG}"
-          cp pt-k8s-summary-linux-amd64 releases/bin/pt-k8s-summary-linux-amd64
-          cp pt-k8s-summary-linux-amd64 "releases/bin/v${TAG}/pt-k8s-summary-linux-amd64"
-          chmod +x releases/bin/pt-k8s-summary-linux-amd64 "releases/bin/v${TAG}/pt-k8s-summary-linux-amd64"
-
       - name: Extract CHANGELOG section
         run: |
           TAG="${{ steps.ver.outputs.tag }}"
@@ -63,13 +55,3 @@ jobs:
           body_path: release-notes.md
           files: pt-k8s-summary-linux-amd64
           generate_release_notes: false
-
-      - name: Commit release binary to main
-        run: |
-          TAG="${{ steps.ver.outputs.tag }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add releases/bin/
-          git diff --staged --quiet && exit 0
-          git commit -m "Add release binary for v${TAG} [skip ci]"
-          git push origin HEAD:main
