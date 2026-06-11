@@ -126,10 +126,11 @@ reports/my-report_logs/<namespace>/<pod>/…/mysqld-error.log.formatted
 
 In the report viewer, truncated logs show a banner with **Load full**, **Open in new tab**, and **Download**. Keep the `_logs` directory alongside the HTML when sharing the report.
 
-## Releases
+## Download releases
 
-- [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) — download the latest `linux/amd64` binary
-- [CHANGELOG.md](CHANGELOG.md) — release history and unreleased changes
+- **From git:** [`releases/bin/pt-k8s-summary-linux-amd64`](releases/bin/pt-k8s-summary-linux-amd64) — latest pre-built Linux binary (see [`releases/README.md`](releases/README.md))
+- [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) — same binary attached to each tag
+- [CHANGELOG.md](CHANGELOG.md) — release history and what changed in each version
 - [docs/RELEASE.md](docs/RELEASE.md) — how to cut a release (maintainers)
 
 Check your build:

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-11
+
+### Added
+
+- Collapsible, filterable **backup inventory** section (large backup lists collapsed by default; search any column)
+- **Filter** on the node inventory table (match hostname, role, IP, OS, kubelet, capacity, pressure, etc.)
+- Release binaries committed under `releases/bin/` for direct download from the repository
+
+### Changed
+
+- Release CI also copies the built binary into `releases/bin/` on the default branch
+
 ## [0.2.0] - 2026-06-10
 
 ### Added

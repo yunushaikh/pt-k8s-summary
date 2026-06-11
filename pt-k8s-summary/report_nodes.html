@@ -2,9 +2,11 @@
 <p class="meta">Report generated at <strong>{{ .GeneratedAt }}</strong> · pt-k8s-summary <strong>v{{ .ToolVersion }}</strong> · Node count: <strong>{{ .NodeCount }}</strong></p>
 
 <h2 class="h-sub">Nodes</h2>
-<details class="nodes-coll">
-<summary class="nodes-coll-sum" aria-label="Expand or collapse the Kubernetes nodes table"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Node inventory</strong><span class="nodes-coll-sum-meta">{{ .NodeCount }} {{ if eq .NodeCount 1 }}node{{ else }}nodes{{ end }} · roles, capacity &amp; pressure</span></span></summary>
+<details class="nodes-coll" id="report-nodes-coll">
+<summary class="nodes-coll-sum" aria-label="Expand or collapse the Kubernetes nodes table"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Node inventory</strong><span class="nodes-coll-sum-meta">{{ .NodeCount }} {{ if eq .NodeCount 1 }}node{{ else }}nodes{{ end }} · roles, capacity &amp; pressure · filterable</span></span></summary>
 <div class="nodes-coll-inner">
+<div class="report-tbl-toolbar"><label>Filter <input type="search" class="report-tbl-filter" id="report-nodes-filter" placeholder="Hostname, role, IP, OS, kubelet…" autocomplete="off" spellcheck="false"></label><span class="report-tbl-meta" id="report-nodes-visible"></span></div>
+<div class="report-tbl-scroll">
 <table>
 <thead>
 <tr>
@@ -25,7 +27,7 @@
 <th>Memory pressure</th>
 </tr>
 </thead>
-<tbody>
+<tbody class="report-nodes-tbody">
 {{ range .Nodes }}
 <tr class="{{ .RowPressureClass }}">
 <td>{{ .Hostname }}</td>
@@ -48,4 +50,28 @@
 </tbody>
 </table>
 </div>
+</div>
 </details>
+<script>(function(){
+  var sec=document.getElementById("report-nodes-coll");
+  if(!sec)return;
+  var inp=sec.querySelector("#report-nodes-filter");
+  var tbody=sec.querySelector(".report-nodes-tbody");
+  var vis=sec.querySelector("#report-nodes-visible");
+  if(!inp||!tbody)return;
+  var total=tbody.querySelectorAll("tr").length;
+  function updateCount(n){
+    if(vis) vis.textContent=n===total ? total+" shown" : n+" of "+total+" shown";
+  }
+  updateCount(total);
+  inp.addEventListener("input", function(){
+    var q=inp.value.trim().toLowerCase();
+    var n=0;
+    tbody.querySelectorAll("tr").forEach(function(tr){
+      var show=q===""||tr.textContent.toLowerCase().indexOf(q)>=0;
+      tr.style.display=show?"":"none";
+      if(show) n++;
+    });
+    updateCount(n);
+  });
+})();</script>

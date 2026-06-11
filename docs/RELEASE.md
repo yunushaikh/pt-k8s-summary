@@ -24,8 +24,18 @@ When ready to ship version `X.Y.Z`:
 
 1. Move items from `[Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` in `CHANGELOG.md`.
 2. Set `Version = "X.Y.Z"` in `pt-k8s-summary/internal/version/version.go`.
-3. Commit: `Release vX.Y.Z`
-4. Tag and push:
+3. Build the release binary and stage it under `releases/bin/`:
+
+   ```bash
+   ./pt-k8s-summary/build.sh
+   cp bin/pt-k8s-summary releases/bin/pt-k8s-summary-linux-amd64
+   mkdir -p releases/bin/vX.Y.Z
+   cp bin/pt-k8s-summary releases/bin/vX.Y.Z/pt-k8s-summary-linux-amd64
+   chmod +x releases/bin/pt-k8s-summary-linux-amd64 releases/bin/vX.Y.Z/pt-k8s-summary-linux-amd64
+   ```
+
+4. Commit: `Release vX.Y.Z` (include `CHANGELOG.md`, `version.go`, and `releases/bin/` changes)
+5. Tag and push:
 
    ```bash
    git tag vX.Y.Z
@@ -33,7 +43,7 @@ When ready to ship version `X.Y.Z`:
    git push origin vX.Y.Z
    ```
 
-5. GitHub Actions (`.github/workflows/release.yml`) builds `pt-k8s-summary` for `linux/amd64`, creates a GitHub Release, attaches the binary, and uses the matching `CHANGELOG` section as release notes.
+6. GitHub Actions (`.github/workflows/release.yml`) builds `pt-k8s-summary` for `linux/amd64`, creates a GitHub Release, attaches the binary, syncs `releases/bin/` on `main`, and uses the matching `CHANGELOG` section as release notes.
 
 ## Verify locally before tagging
 
