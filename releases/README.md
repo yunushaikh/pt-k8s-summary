@@ -12,6 +12,6 @@ Each release includes:
 | `pt-k8s-summary_darwin_arm64` | macOS Apple Silicon (M1/M2/M3) |
 | `SHA256SUMS` | Checksums for all of the above |
 
-Install and usage: [README.md](../README.md#download-pre-built-binaries).
+Install and usage: [README — Install](../README.md#install).
 
 Release history: [CHANGELOG.md](../CHANGELOG.md).
