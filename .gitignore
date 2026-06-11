@@ -29,3 +29,5 @@ nohup.out
 # Editor / OS
 *.swp
 *~
+.work
+.cursor/
