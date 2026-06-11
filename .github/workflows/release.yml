@@ -76,7 +76,7 @@ jobs:
             echo "| macOS Intel | \`pt-k8s-summary_darwin_amd64\` |"
             echo "| macOS Apple Silicon | \`pt-k8s-summary_darwin_arm64\` |"
             echo ""
-            echo "Verify with \`SHA256SUMS\`. See [README](https://github.com/yunushaikh/pt-k8s-summary/blob/main/README.md#install) for install and usage."
+            echo "Verify with \`SHA256SUMS\`. See [docs/INSTALL.md](https://github.com/yunushaikh/pt-k8s-summary/blob/main/docs/INSTALL.md) for install and [docs/USAGE.md](https://github.com/yunushaikh/pt-k8s-summary/blob/main/docs/USAGE.md) for usage."
           } >> release-notes.md
 
       - name: Create GitHub Release
