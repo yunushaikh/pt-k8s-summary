@@ -73,7 +73,12 @@
 {{ if .BackupEmpty }}
 <p class="meta">No <code>PerconaXtraDBClusterBackup</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code> (searched recursively for <code>perconaxtradbclusterbackups.pxc.percona.com.yaml</code>).</p>
 {{ else }}
-<p class="meta">{{ .BackupMeta }}</p>
+<p class="meta">{{ .BackupMeta }} Use the filter to match any column (name, cluster, storage, status, age).</p>
+<details class="nodes-coll" id="pxc-backups-coll">
+<summary class="nodes-coll-sum" aria-label="Expand or collapse the backups table"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Backup inventory</strong><span class="nodes-coll-sum-meta">{{ len .BackupRows }} {{ if eq (len .BackupRows) 1 }}backup{{ else }}backups{{ end }} · filterable · collapsed by default</span></span></summary>
+<div class="nodes-coll-inner">
+<div class="report-tbl-toolbar"><label>Filter <input type="search" class="report-tbl-filter" id="pxc-backup-filter" placeholder="Name, cluster, storage, destination, status…" autocomplete="off" spellcheck="false"></label><span class="report-tbl-meta" id="pxc-backup-visible"></span></div>
+<div class="report-tbl-scroll">
 <table>
 <thead>
 <tr>
@@ -86,7 +91,7 @@
 <th>Logs</th>
 </tr>
 </thead>
-<tbody>
+<tbody class="pxc-backup-tbody">
 {{ range .BackupRows }}
 <tr>
 <td class="pxc-pod-name-cell"><textarea readonly hidden class="backup-manifest-store" id="{{ .BackupManifestModalID }}-full">{{ .BackupManifestEscaped }}</textarea><button type="button" class="pod-name-btn backup-manifest-btn" data-target="{{ .BackupManifestModalID }}" data-backup-display="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button></td>
@@ -100,5 +105,31 @@
 {{ end }}
 </tbody>
 </table>
+</div>
+</div>
+</details>
+<script>(function(){
+  var sec=document.getElementById("pxc-backups-coll");
+  if(!sec)return;
+  var inp=sec.querySelector("#pxc-backup-filter");
+  var tbody=sec.querySelector(".pxc-backup-tbody");
+  var vis=sec.querySelector("#pxc-backup-visible");
+  if(!inp||!tbody)return;
+  var total=tbody.querySelectorAll("tr").length;
+  function updateCount(n){
+    if(vis) vis.textContent=n===total ? total+" shown" : n+" of "+total+" shown";
+  }
+  updateCount(total);
+  inp.addEventListener("input", function(){
+    var q=inp.value.trim().toLowerCase();
+    var n=0;
+    tbody.querySelectorAll("tr").forEach(function(tr){
+      var show=q===""||tr.textContent.toLowerCase().indexOf(q)>=0;
+      tr.style.display=show?"":"none";
+      if(show) n++;
+    });
+    updateCount(n);
+  });
+})();</script>
 {{ end }}
 
