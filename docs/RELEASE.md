@@ -43,7 +43,7 @@ When ready to ship version `X.Y.Z`:
    git push origin vX.Y.Z
    ```
 
-6. GitHub Actions (`.github/workflows/release.yml`) builds `pt-k8s-summary` for `linux/amd64`, creates a GitHub Release, attaches the binary, syncs `releases/bin/` on `main`, and uses the matching `CHANGELOG` section as release notes.
+6. GitHub Actions (`.github/workflows/release.yml`) builds `linux/amd64`, attaches the binary to a **GitHub Release**, and uses the matching `CHANGELOG` section as release notes. Binaries under `releases/bin/` in git come from step 4 (the release commit), not from CI.
 
 ## Verify locally before tagging
 
