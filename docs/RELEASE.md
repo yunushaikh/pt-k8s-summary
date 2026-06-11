@@ -66,5 +66,5 @@ GOOS=darwin GOARCH=arm64 go build -o /tmp/pt-k8s-summary-darwin-arm64 .
 - **Binaries only on GitHub Releases** — keeps the git repo small; old versions stay on the Releases page.
 - **No Windows** — primary users are Linux/macOS k8s operators; add later if demand appears.
 - **Pure Go / CGO_ENABLED=0** — cross-compiles reliably in CI without macOS runners.
-- **Optional runtime tools** — `pt-galera-log-explainer` (Percona Toolkit) is not bundled; document in README.
-- **HTML + sidecar `_logs/`** — large logs stay beside the report; mention when sharing reports.
+- **Optional runtime tools** — `pt-galera-log-explainer` (Percona Toolkit) is not bundled; see [USAGE.md](USAGE.md)
+- **HTML + sidecar `_logs/`** — large logs stay beside the report; see [USAGE.md](USAGE.md)
