@@ -21,6 +21,7 @@ Each tagged release also keeps a copy under `bin/vX.Y.Z/`:
 
 | Version | Binary |
 |---------|--------|
+| v0.3.2 | [`bin/v0.3.2/pt-k8s-summary-linux-amd64`](bin/v0.3.2/pt-k8s-summary-linux-amd64) |
 | v0.3.1 | [`bin/v0.3.1/pt-k8s-summary-linux-amd64`](bin/v0.3.1/pt-k8s-summary-linux-amd64) |
 | v0.3.0 | [`bin/v0.3.0/pt-k8s-summary-linux-amd64`](bin/v0.3.0/pt-k8s-summary-linux-amd64) |
 

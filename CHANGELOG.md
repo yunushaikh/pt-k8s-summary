@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-11
+
+### Fixed
+
+- Backup **View logs** links visible again: log/manifest text moved out of table rows (stash div); **Logs** column placed after **Name** so it is not off-screen when scrolling wide tables
+
 ## [0.3.1] - 2026-06-11
 
 ### Fixed
