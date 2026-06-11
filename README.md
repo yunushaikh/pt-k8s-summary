@@ -14,52 +14,116 @@ The report summarizes nodes, Percona XtraDB Cluster (PXC) resources, backups, po
 
 Cluster dumps are **not** in this repo. You provide your own archive or extracted tree.
 
-## Download pre-built binaries
+## Install
 
-Binaries are published on **[GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases)** only (not committed to git).
+Pre-built binaries are on **[GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases)** (not in git). Pick the asset for your machine, download it, install as `pt-k8s-summary` on your `PATH`, then run it from anywhere.
 
-| Your machine | Download asset |
-|--------------|----------------|
-| Linux x86_64 (most servers, WSL, Intel/AMD PC) | `pt-k8s-summary_linux_amd64` |
-| Linux ARM64 (Graviton, Ampere, ARM VMs) | `pt-k8s-summary_linux_arm64` |
+| Platform | GitHub asset |
+|----------|----------------|
+| Linux x86_64 | `pt-k8s-summary_linux_amd64` |
+| Linux ARM64 | `pt-k8s-summary_linux_arm64` |
 | macOS Apple Silicon (M1/M2/M3) | `pt-k8s-summary_darwin_arm64` |
 | macOS Intel | `pt-k8s-summary_darwin_amd64` |
 
-Windows is not supported. Build from source on Windows only if you accept an unsupported, untested path.
+Windows is not supported.
 
-### Install (Linux / macOS)
+Set the release version once (use [latest](https://github.com/yunushaikh/pt-k8s-summary/releases/latest) or a specific tag):
 
 ```bash
-# Example: Apple Silicon Mac — pick the asset that matches your machine
 VERSION=v0.4.0
-curl -fsSL -o pt-k8s-summary \
-  "https://github.com/yunushaikh/pt-k8s-summary/releases/download/${VERSION}/pt-k8s-summary_darwin_arm64"
-chmod +x pt-k8s-summary
-./pt-k8s-summary -version
 ```
 
-Verify checksums from `SHA256SUMS` on the same release page.
+### Linux x86_64
+
+```bash
+VERSION=v0.4.0
+ASSET=pt-k8s-summary_linux_amd64
+curl -fsSL -o "$ASSET" \
+  "https://github.com/yunushaikh/pt-k8s-summary/releases/download/${VERSION}/${ASSET}"
+chmod +x "$ASSET"
+sudo install -m 0755 "$ASSET" /usr/local/bin/pt-k8s-summary
+pt-k8s-summary -version
+```
+
+### Linux ARM64
+
+```bash
+VERSION=v0.4.0
+ASSET=pt-k8s-summary_linux_arm64
+curl -fsSL -o "$ASSET" \
+  "https://github.com/yunushaikh/pt-k8s-summary/releases/download/${VERSION}/${ASSET}"
+chmod +x "$ASSET"
+sudo install -m 0755 "$ASSET" /usr/local/bin/pt-k8s-summary
+pt-k8s-summary -version
+```
+
+### macOS Apple Silicon
+
+```bash
+VERSION=v0.4.0
+ASSET=pt-k8s-summary_darwin_arm64
+curl -fsSL -o "$ASSET" \
+  "https://github.com/yunushaikh/pt-k8s-summary/releases/download/${VERSION}/${ASSET}"
+chmod +x "$ASSET"
+sudo install -m 0755 "$ASSET" /usr/local/bin/pt-k8s-summary
+pt-k8s-summary -version
+```
+
+### macOS Intel
+
+```bash
+VERSION=v0.4.0
+ASSET=pt-k8s-summary_darwin_amd64
+curl -fsSL -o "$ASSET" \
+  "https://github.com/yunushaikh/pt-k8s-summary/releases/download/${VERSION}/${ASSET}"
+chmod +x "$ASSET"
+sudo install -m 0755 "$ASSET" /usr/local/bin/pt-k8s-summary
+pt-k8s-summary -version
+```
+
+`install` copies the downloaded file and renames it to `pt-k8s-summary` in one step. Remove the download artifact afterward if you like: `rm "$ASSET"`.
+
+### Install without `sudo` (user directory)
+
+If you prefer not to use `/usr/local/bin`:
+
+```bash
+mkdir -p ~/.local/bin
+install -m 0755 "$ASSET" ~/.local/bin/pt-k8s-summary
+```
+
+Ensure `~/.local/bin` is on your `PATH` (many Linux desktops already include it). Then run `pt-k8s-summary` from any directory.
+
+### Verify checksums (optional)
+
+On the release page, download `SHA256SUMS`, then:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+```
 
 ### macOS first run
 
-Downloaded binaries may be blocked by Gatekeeper. Either run from Terminal after `chmod +x`, or right-click the binary → **Open** once. You do not need to install Go to use a release binary.
+Gatekeeper may block a freshly downloaded binary. After install, if `pt-k8s-summary` is blocked, run it once from Terminal or right-click → **Open**. You do not need Go installed to use a release binary.
 
 ### Flags must come before the archive path
 
 ```bash
 # Good
-./pt-k8s-summary -certified-images=false /path/to/dump.tar.gz
+pt-k8s-summary -certified-images=false /path/to/dump.tar.gz
 
 # Bad — -certified-images is ignored (Go flag parsing)
-./pt-k8s-summary /path/to/dump.tar.gz -certified-images=false
+pt-k8s-summary /path/to/dump.tar.gz -certified-images=false
 ```
 
 ## Usage
 
+Examples assume `pt-k8s-summary` is on your `PATH` (see [Install](#install)). Use `./bin/pt-k8s-summary` instead if you [built from source](#build-from-source).
+
 ### From a tarball
 
 ```bash
-./pt-k8s-summary /path/to/cluster-dump.tar.gz
+pt-k8s-summary /path/to/cluster-dump.tar.gz
 ```
 
 Default output: `reports/<archive-stem>-summary.html`
@@ -67,7 +131,7 @@ Default output: `reports/<archive-stem>-summary.html`
 ### From an extracted dump directory
 
 ```bash
-./pt-k8s-summary -dump /path/to/cluster-dump
+pt-k8s-summary -dump /path/to/cluster-dump
 ```
 
 Default output: `reports/report.html`
@@ -76,13 +140,13 @@ Default output: `reports/report.html`
 
 ```bash
 # Custom output path
-./pt-k8s-summary -dump ./cluster-dump -out reports/my-report.html
+pt-k8s-summary -dump ./cluster-dump -out reports/my-report.html
 
 # Offline (no certified-image network fetch)
-./pt-k8s-summary -dump ./cluster-dump -certified-images=false
+pt-k8s-summary -dump ./cluster-dump -certified-images=false
 
 # Galera timeline: only events on/after a time (needs pt-galera-log-explainer on PATH)
-./pt-k8s-summary -dump ./cluster-dump -galera-since 2023-01-05T03:24:26.000000Z
+pt-k8s-summary -dump ./cluster-dump -galera-since 2023-01-05T03:24:26.000000Z
 ```
 
 ## Flags
