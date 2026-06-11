@@ -15,6 +15,7 @@ import (
 	"pt-k8s-summary/internal/collector"
 	"pt-k8s-summary/internal/dumpctx"
 	"pt-k8s-summary/internal/jpreport"
+	"pt-k8s-summary/internal/version"
 
 	"gopkg.in/yaml.v3"
 )
@@ -189,6 +190,7 @@ func main() {
 	if len(os.Args) > 1 {
 		os.Args = append([]string{os.Args[0]}, pullKnownFlags(os.Args[1:])...)
 	}
+	showVersion := flag.Bool("version", false, "print version and exit")
 	dumpPath := flag.String("dump", "", "path to extracted cluster dump root (recursive PXC search; default nodes: <dump>/nodes.yaml)")
 	nodesPath := flag.String("nodes", "", "path to nodes.yaml (default: <dump>/nodes.yaml when -dump is set)")
 	outPath := flag.String("out", "", "output HTML path (default: reports/<archive-stem>-summary.html for archives, else reports/report.html)")
@@ -196,6 +198,11 @@ func main() {
 	certifiedImages := flag.Bool("certified-images", true, "fetch Percona certified image list (by spec.crVersion) and compare with images from pods.yaml (uses network)")
 	flag.Usage = usage
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("pt-k8s-summary %s\n", version.String())
+		return
+	}
 
 	args := flag.Args()
 	if len(args) != 1 || !looksLikeClusterArchive(args[0]) {
@@ -383,6 +390,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	execData := struct {
 		Proc            processingReport
 		GeneratedAt     string
+		ToolVersion     string
 		NodeCount       int
 		Nodes           []nodeRowTmpl
 		PXCRows         []jpreport.PXCRowTmpl
@@ -400,6 +408,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}{
 		Proc:            proc,
 		GeneratedAt:     now.UTC().Format(time.RFC3339),
+		ToolVersion:     version.String(),
 		NodeCount:       len(nodeRows),
 		Nodes:           toTmplNodes(nodeRows),
 		PXCRows:         pxcRows,

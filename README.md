@@ -105,6 +105,7 @@ To limit Galera log analysis to events on or after a given time:
 
 | Flag | Description |
 |------|-------------|
+| `-version` | Print version and exit |
 | `-dump` | Path to an extracted cluster dump root |
 | `-nodes` | Path to `nodes.yaml` (default: `<dump>/nodes.yaml`) |
 | `-out` | Output HTML path |
@@ -124,6 +125,18 @@ reports/my-report_logs/<namespace>/<pod>/…/mysqld-error.log.formatted
 ```
 
 In the report viewer, truncated logs show a banner with **Load full**, **Open in new tab**, and **Download**. Keep the `_logs` directory alongside the HTML when sharing the report.
+
+## Releases
+
+- [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) — download the latest `linux/amd64` binary
+- [CHANGELOG.md](CHANGELOG.md) — release history and unreleased changes
+- [docs/RELEASE.md](docs/RELEASE.md) — how to cut a release (maintainers)
+
+Check your build:
+
+```bash
+./bin/pt-k8s-summary -version
+```
 
 ## Project layout
 

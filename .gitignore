@@ -12,8 +12,9 @@
 *.tgz
 
 # Build artifacts
-/pt-k8s-summary
+/bin/
 /pt-k8s-summary-code/pt-k8s-summary
+/pt-k8s-summary/pt-k8s-summary
 /backups/
 *.bak
 
