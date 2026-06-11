@@ -11,5 +11,8 @@ if [[ -f "$BIN" ]]; then
 	echo "Backed up previous binary to backups/pt-k8s-summary.${ts}.bak"
 fi
 cd "$(dirname "$0")"
-go build -o "$BIN" .
-echo "Built $BIN"
+COMMIT="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo dev)"
+go build -trimpath \
+  -ldflags "-s -w -X pt-k8s-summary/internal/version.Commit=${COMMIT}" \
+  -o "$BIN" .
+echo "Built $BIN ($( "$BIN" -version 2>/dev/null || true ))"

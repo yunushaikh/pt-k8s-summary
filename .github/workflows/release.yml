@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache-dependency-path: pt-k8s-summary/go.sum
+
+      - name: Resolve version
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release version: $TAG"
+
+      - name: Build linux/amd64
+        env:
+          VERSION: ${{ steps.ver.outputs.tag }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          cd pt-k8s-summary
+          go build -trimpath \
+            -ldflags "-s -w -X pt-k8s-summary/internal/version.Version=${VERSION} -X pt-k8s-summary/internal/version.Commit=${COMMIT::7}" \
+            -o ../pt-k8s-summary-linux-amd64 .
+
+      - name: Extract CHANGELOG section
+        id: notes
+        run: |
+          TAG="${{ steps.ver.outputs.tag }}"
+          awk -v ver="$TAG" '
+            $0 ~ "^## \\[" ver "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [[ ! -s release-notes.md ]]; then
+            echo "Release notes for ${TAG} not found in CHANGELOG.md" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: pt-k8s-summary-linux-amd64
+          generate_release_notes: false
