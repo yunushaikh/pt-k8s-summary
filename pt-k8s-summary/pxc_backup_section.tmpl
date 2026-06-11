@@ -79,32 +79,38 @@
 <div class="nodes-coll-inner">
 <div class="report-tbl-toolbar"><label>Filter <input type="search" class="report-tbl-filter" id="pxc-backup-filter" placeholder="e.g. Failed, cluster name, storage…" autocomplete="off" spellcheck="false"></label><span class="report-tbl-meta" id="pxc-backup-visible"></span></div>
 <div class="report-tbl-scroll">
-<table>
+<table class="pxc-backup-table">
 <thead>
 <tr>
 <th>Name</th>
+<th class="pxc-backup-log-col">Logs</th>
 <th>Cluster</th>
 <th>Storage</th>
 <th>Destination</th>
 <th>Status</th>
 <th>Age</th>
-<th>Logs</th>
 </tr>
 </thead>
 <tbody class="pxc-backup-tbody">
 {{ range .BackupRows }}
 <tr class="pxc-backup-row" data-backup-status="{{ .Status }}">
-<td class="pxc-backup-col pxc-pod-name-cell"><textarea readonly hidden class="backup-manifest-store" id="{{ .BackupManifestModalID }}-full">{{ .BackupManifestEscaped }}</textarea><button type="button" class="pod-name-btn backup-manifest-btn" data-target="{{ .BackupManifestModalID }}" data-backup-display="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button></td>
+<td class="pxc-backup-col pxc-pod-name-cell"><button type="button" class="pod-name-btn backup-manifest-btn" data-target="{{ .BackupManifestModalID }}" data-backup-display="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button></td>
+<td class="pxc-backup-log-col pxc-pod-log-cell">{{ if .HasPodLog }}<button type="button" class="pod-log-btn" data-target="{{ .PodLogModalID }}" data-pod-name="{{ .LogPodName }}">View logs</button>{{ else }}<span class="status-muted" title="{{ if .LogPodName }}No logs.txt for pod {{ .LogPodName }}{{ else }}No backup pod matched in pods.yaml{{ end }}">—</span>{{ end }}</td>
 <td class="pxc-backup-col">{{ .Cluster }}</td>
 <td class="pxc-backup-col">{{ .Storage }}</td>
 <td class="pxc-backup-col">{{ .Destination }}</td>
 <td class="pxc-backup-col pxc-backup-status">{{ .Status }}</td>
 <td class="pxc-backup-col">{{ .Age }}</td>
-<td class="pxc-pod-log-cell">{{ if .HasPodLog }}<textarea readonly hidden class="pod-log-store" id="{{ .PodLogModalID }}-full">{{ .PodLogEscaped }}</textarea><button type="button" class="pod-log-btn" data-target="{{ .PodLogModalID }}" data-pod-name="{{ .LogPodName }}">View logs</button>{{ else }}<span class="status-muted">—</span>{{ end }}</td>
 </tr>
 {{ end }}
 </tbody>
 </table>
+</div>
+<div class="pxc-backup-stash" hidden aria-hidden="true">
+{{ range .BackupRows }}
+<textarea readonly class="backup-manifest-store" id="{{ .BackupManifestModalID }}-full">{{ .BackupManifestEscaped }}</textarea>
+{{ if .HasPodLog }}<textarea readonly class="pod-log-store" id="{{ .PodLogModalID }}-full">{{ .PodLogEscaped }}</textarea>{{ end }}
+{{ end }}
 </div>
 </div>
 </details>
