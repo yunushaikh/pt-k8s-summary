@@ -13,8 +13,8 @@ import (
 	"pt-k8s-summary/internal/dumpctx"
 )
 
-// certificatesSection parses OpenSSL text dumps from
-// <namespace>/&lt;perconaxtradbcluster-name&gt;-ssl-internal files in the debug collector output.
+// certificatesSection parses OpenSSL text dumps from PXC TLS collector files under
+// &lt;namespace&gt;/&lt;cluster-name&gt;-{ca-cert,ssl,ssl-internal} in the debug collector output.
 type certificatesSection struct{}
 
 func (certificatesSection) ID() string    { return "pxc-ssl-certificates" }
@@ -50,9 +50,26 @@ type internalCertEntry struct {
 	SkipReason  string
 }
 
-// findSSLInternalFiles walks the dump and returns regular files whose names end with ssl-internal
-// (e.g. pxc-db-ssl-internal in namespace folder).
-func findSSLInternalFiles(dumpRoot string) ([]string, error) {
+// sslCertDumpSuffixes lists collector TLS dump filename suffixes (longest first).
+var sslCertDumpSuffixes = []string{"-ssl-internal", "-ca-cert", "-ssl"}
+
+func isSSLCertDumpFile(name string) bool {
+	_, ok := clusterNameFromSSLDumpFile(name)
+	return ok
+}
+
+func clusterNameFromSSLDumpFile(name string) (string, bool) {
+	for _, suf := range sslCertDumpSuffixes {
+		if strings.HasSuffix(name, suf) {
+			return strings.TrimSuffix(name, suf), true
+		}
+	}
+	return "", false
+}
+
+// findSSLCertDumpFiles walks the dump and returns regular files whose names end with
+// -ca-cert, -ssl, or -ssl-internal (e.g. stg1-ssl-internal under a namespace folder).
+func findSSLCertDumpFiles(dumpRoot string) ([]string, error) {
 	var paths []string
 	err := filepath.Walk(dumpRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -64,7 +81,7 @@ func findSSLInternalFiles(dumpRoot string) ([]string, error) {
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		if strings.HasSuffix(info.Name(), "ssl-internal") {
+		if isSSLCertDumpFile(info.Name()) {
 			paths = append(paths, path)
 		}
 		return nil
@@ -162,7 +179,7 @@ func parseOpenSSLTextCerts(dump []byte) []struct {
 }
 
 func gatherCertificateSectionHTML(dumpRoot string) (string, error) {
-	files, err := findSSLInternalFiles(dumpRoot)
+	files, err := findSSLCertDumpFiles(dumpRoot)
 	if err != nil {
 		return "", err
 	}
@@ -188,7 +205,7 @@ func gatherCertificateSectionHTML(dumpRoot string) (string, error) {
 			ns = "—"
 		}
 		base := filepath.Base(fpath)
-		clusterName = strings.TrimSuffix(base, "-ssl-internal")
+		clusterName, _ = clusterNameFromSSLDumpFile(base)
 
 		entries := parseOpenSSLTextCerts(data)
 		for _, e := range entries {
@@ -225,7 +242,7 @@ func renderInternalCertsTable(rows []internalCertEntry) string {
 #pxc-ssl-certificates .pxc-cert-table td.pxc-cert-mono { font-family: ui-monospace, Menlo, monospace; font-size: 0.7rem; }
 #pxc-ssl-certificates .pxc-cert-skip, #pxc-ssl-certificates span.pxc-cert-skip { font-size: 0.7rem; color: #94a3b8; font-style: italic; }
 </style>`)
-	b.WriteString(`<p class="pxc-cert-note">Internal PXC / Galera TLS material from the collector file <code>&lt;namespace&gt;/&lt;cluster-name&gt;-ssl-internal</code> (e.g. <code>pxc-db-ssl-internal</code> under the namespace directory). The file contains OpenSSL <code>x509 -text</code> output. Each row is one embedded certificate (<code>ca.crt</code>, <code>tls.crt</code>, …) with <strong>issuer</strong>, start date (<strong>Not Before</strong>), and expiry (<strong>Not After</strong>).</p>`)
+	b.WriteString(`<p class="pxc-cert-note">PXC / Galera TLS material from collector files <code>&lt;namespace&gt;/&lt;cluster-name&gt;-ca-cert</code>, <code>…-ssl</code>, and <code>…-ssl-internal</code> (whichever are present in the dump). Each file contains OpenSSL <code>x509 -text</code> output. Each row is one embedded certificate (<code>ca.crt</code>, <code>tls.crt</code>, …) with <strong>issuer</strong>, start date (<strong>Not Before</strong>), and expiry (<strong>Not After</strong>).</p>`)
 	b.WriteString(`<table class="pxc-cert-table"><thead><tr>`)
 	b.WriteString(`<th scope="col">Namespace</th><th scope="col">Cluster</th><th scope="col">Dump file</th><th scope="col">cert</th>`)
 	b.WriteString(`<th scope="col">Issuer</th><th scope="col">Start (Not Before)</th><th scope="col">Expiry (Not After)</th><th scope="col">Note</th>`)
