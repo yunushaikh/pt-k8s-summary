@@ -429,7 +429,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		return fmt.Errorf("render: %w", err)
 	}
 
-	fmt.Printf("Wrote %s (%d nodes, %d PXC cluster(s) from %d file(s), %d backup(s) from %d file(s))\n", out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount)
+	printWroteReport(out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount)
 	return nil
 }
 

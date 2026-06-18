@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.5.0] - 2026-06-18
 
-- User documentation moved under `docs/` (install, usage, build, development); root README is a short entry point
+### Added
+
+- **Clickable report path on success:** after generating a report, the tool prints the **absolute path** to the HTML file; in a terminal, the path is a clickable `file://` link that opens the report in your browser
+
+### Fixed
+
+- **Certificates section** now reads all PXC TLS dump files present in the cluster dump (`<cluster>-ca-cert`, `<cluster>-ssl`, `<cluster>-ssl-internal`), not only `-ssl-internal`
 
 ## [0.4.0] - 2026-06-11
 
