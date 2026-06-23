@@ -319,6 +319,32 @@ func findPodLogRows(dumpRoot, reportOutPath, wantKind string, podLoader *jprepor
 	return out, nil
 }
 
+// scopePodLogsFragment rewrites PXC-default element ids and CSS selectors for a pod-logs
+// section (pxc-pod-logs vs ps-pod-logs) so styles, modals, and stash ids do not collide.
+func scopePodLogsFragment(html, sectionID, tag string) string {
+	logModal := tag + "-log-modal-" + tag
+	gleModal := tag + "-gle-modal-" + tag
+	repl := strings.NewReplacer(
+		"#pxc-pod-logs", "#"+sectionID,
+		"pxc-log-modal-pxc", logModal,
+		"pxc-gle-modal-pxc", gleModal,
+		"pxc-plg-helptip-btn", tag+"-plg-helptip-btn",
+		"pxc-plg-helptip-box", tag+"-plg-helptip-box",
+		"pxc-plg-dlg-title-pxc", tag+"-plg-dlg-title-"+tag,
+		"pxc-plg-dlg-bar-pxc", tag+"-plg-dlg-bar-"+tag,
+		"pxc-plg-dlg-body-pxc", tag+"-plg-dlg-body-"+tag,
+		"pxc-gle-open", tag+"-gle-open",
+		"pxc-gle-stash", tag+"-gle-stash",
+		"pxc-gle-dlg-title-pxc", tag+"-gle-dlg-title-"+tag,
+		"pxc-gle-dlg-body-pxc", tag+"-gle-dlg-body-"+tag,
+		"pxc-plg-stash-", tag+"-plg-stash-",
+		"pxc-plg-load-full", tag+"-plg-load-full",
+		`"pxc-pod-logs"`, `"`+sectionID+`"`,
+		"#pxc-plg-helptip-btn, #pxc-plg-helptip-box", "#"+tag+"-plg-helptip-btn, #"+tag+"-plg-helptip-box",
+	)
+	return repl.Replace(html)
+}
+
 func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s map[string]jpreport.PodK8sMeta, pods *jpreport.PodLoader, wantKind string, includeGalera bool) (string, error) {
 	rows, err := findPodLogRows(dumpRoot, reportOutPath, wantKind, pods)
 	if err != nil {
@@ -527,40 +553,44 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 	b.WriteString(`<p class="pxc-plg-dlg-bar" id="pxc-plg-dlg-bar-pxc" aria-live="polite"></p></div>`)
 	b.WriteString(`<pre class="pxc-plg-pre" id="pxc-plg-dlg-body-pxc" tabindex="0" aria-live="polite" aria-atomic="true" aria-labelledby="pxc-plg-dlg-title-pxc">`)
 	b.WriteString(`</pre></div></div>`)
-	b.WriteString(`<p class="pxc-plg-note">PXC-related pods (name contains <code>-pxc-</code>, <code>pxc-operator</code>, <code>xtradb-cluster-operator</code>, or <code>haproxy</code> / <code>proxysql</code>) are scanned for log files: <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under the pod directory (e.g. <code>var/lib/mysql/mysqld-error.log</code>). Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB are previewed in the HTML; the complete file is copied to a sibling <code>_logs</code> directory next to the report (same layout as the dump) and linked from the viewer.</p>`)
-	b.WriteString(`<div class="pxc-gle-wrap"><h4 class="pxc-gle-h4"><a href="https://docs.percona.com/percona-toolkit/pt-galera-log-explainer.html" rel="noopener noreferrer" target="_blank">pt-galera-log-explainer</a> <code>list --all</code></h4>`)
-	if strings.TrimSpace(galeraSince) != "" {
-		b.WriteString(`<p class="pxc-gle-meta" style="margin:0 0 0.5rem 0;">` + esc("--since "+galeraSince) + `</p>`)
+	if includeGalera {
+		b.WriteString(`<p class="pxc-plg-note">PXC-related pods (name contains <code>-pxc-</code>, <code>pxc-operator</code>, <code>xtradb-cluster-operator</code>, or <code>haproxy</code> / <code>proxysql</code>) are scanned for log files: <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under the pod directory (e.g. <code>var/lib/mysql/mysqld-error.log</code>). Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB are previewed in the HTML; the complete file is copied to a sibling <code>_logs</code> directory next to the report (same layout as the dump) and linked from the viewer.</p>`)
+		b.WriteString(`<div class="pxc-gle-wrap"><h4 class="pxc-gle-h4"><a href="https://docs.percona.com/percona-toolkit/pt-galera-log-explainer.html" rel="noopener noreferrer" target="_blank">pt-galera-log-explainer</a> <code>list --all</code></h4>`)
+		if strings.TrimSpace(galeraSince) != "" {
+			b.WriteString(`<p class="pxc-gle-meta" style="margin:0 0 0.5rem 0;">` + esc("--since "+galeraSince) + `</p>`)
+		}
+		if gleOut != "" {
+			b.WriteString(`<button type="button" class="pxc-gle-btn" id="pxc-gle-open">View timeline</button>`)
+			if gleErr != "" {
+				b.WriteString(`<p class="pxc-gle-warn" title="` + esc(gleErr) + `">` + esc(truncateString("stderr: "+gleErr, 500)) + `</p>`)
+			}
+		} else {
+			if gleInfo != "" {
+				b.WriteString(`<p class="pxc-gle-meta" style="color:#64748b;">` + esc(gleInfo) + `</p>`)
+			}
+			if gleErr != "" {
+				b.WriteString(`<p class="pxc-gle-err" title="` + esc(gleErr) + `">` + esc(truncateString(gleErr, 500)) + `</p>`)
+			}
+			if gleErrText != "" {
+				b.WriteString(`<p class="pxc-gle-err">` + esc(gleErrText) + `</p>`)
+			}
+			b.WriteString(`<button type="button" class="pxc-gle-btn" id="pxc-gle-open" disabled>View timeline</button>`)
+		}
+		b.WriteString(`</div>`)
+		if gleOut != "" {
+			b.WriteString(`<pre class="pxc-gle-blob" id="pxc-gle-stash">` + esc(gleOut) + `</pre>`)
+		} else {
+			b.WriteString(`<pre class="pxc-gle-blob" id="pxc-gle-stash"></pre>`)
+		}
+		b.WriteString(`<div id="pxc-gle-modal-pxc" aria-hidden="true" role="dialog" aria-modal="true" aria-label="pt-galera-log-explainer output">`)
+		b.WriteString(`<div class="pxc-gle-dlg" role="document" tabindex="-1">`)
+		b.WriteString(`<div class="pxc-gle-dlg-h"><h4 class="pxc-gle-dlg-t" id="pxc-gle-dlg-title-pxc">pt-galera-log-explainer</h4>`)
+		b.WriteString(`<button type="button" class="pxc-gle-dlg-c" data-pxc-gle-x="" aria-label="Close">×</button></div>`)
+		b.WriteString(`<pre class="pxc-gle-tab" id="pxc-gle-dlg-body-pxc" tabindex="0" aria-live="polite" aria-atomic="true" aria-labelledby="pxc-gle-dlg-title-pxc">`)
+		b.WriteString(`</pre></div></div>`)
+	} else if wantKind == "ps" {
+		b.WriteString(`<p class="pxc-plg-note">Percona Server for MySQL operator pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under each pod directory. Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB are previewed in the HTML; the complete file is copied to a sibling <code>_logs</code> directory next to the report and linked from the viewer.</p>`)
 	}
-	if gleOut != "" {
-		b.WriteString(`<button type="button" class="pxc-gle-btn" id="pxc-gle-open">View timeline</button>`)
-		if gleErr != "" {
-			b.WriteString(`<p class="pxc-gle-warn" title="` + esc(gleErr) + `">` + esc(truncateString("stderr: "+gleErr, 500)) + `</p>`)
-		}
-	} else {
-		if gleInfo != "" {
-			b.WriteString(`<p class="pxc-gle-meta" style="color:#64748b;">` + esc(gleInfo) + `</p>`)
-		}
-		if gleErr != "" {
-			b.WriteString(`<p class="pxc-gle-err" title="` + esc(gleErr) + `">` + esc(truncateString(gleErr, 500)) + `</p>`)
-		}
-		if gleErrText != "" {
-			b.WriteString(`<p class="pxc-gle-err">` + esc(gleErrText) + `</p>`)
-		}
-		b.WriteString(`<button type="button" class="pxc-gle-btn" id="pxc-gle-open" disabled>View timeline</button>`)
-	}
-	b.WriteString(`</div>`)
-	if gleOut != "" {
-		b.WriteString(`<pre class="pxc-gle-blob" id="pxc-gle-stash">` + esc(gleOut) + `</pre>`)
-	} else {
-		b.WriteString(`<pre class="pxc-gle-blob" id="pxc-gle-stash"></pre>`)
-	}
-	b.WriteString(`<div id="pxc-gle-modal-pxc" aria-hidden="true" role="dialog" aria-modal="true" aria-label="pt-galera-log-explainer output">`)
-	b.WriteString(`<div class="pxc-gle-dlg" role="document" tabindex="-1">`)
-	b.WriteString(`<div class="pxc-gle-dlg-h"><h4 class="pxc-gle-dlg-t" id="pxc-gle-dlg-title-pxc">pt-galera-log-explainer</h4>`)
-	b.WriteString(`<button type="button" class="pxc-gle-dlg-c" data-pxc-gle-x="" aria-label="Close">×</button></div>`)
-	b.WriteString(`<pre class="pxc-gle-tab" id="pxc-gle-dlg-body-pxc" tabindex="0" aria-live="polite" aria-atomic="true" aria-labelledby="pxc-gle-dlg-title-pxc">`)
-	b.WriteString(`</pre></div></div>`)
 	b.WriteString("<script>(function(){\n")
 	b.WriteString(`  function closePlgHelptip(){
     var b=document.getElementById("pxc-plg-helptip-box");
@@ -702,7 +732,7 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
   });
 })();`)
 	b.WriteString("</sc" + "ript>")
-	return b.String(), nil
+	return scopePodLogsFragment(b.String(), wantKind+"-pod-logs", wantKind), nil
 }
 
 func truncateString(s string, n int) string {

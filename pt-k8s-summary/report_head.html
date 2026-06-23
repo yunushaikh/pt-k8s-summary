@@ -251,10 +251,16 @@ table.pxc-inner-table th { background: #ecfeff; color: #134e4a; }
 .pxc-cfg-dialog-pre { white-space: pre-wrap; max-height: 70vh; overflow: auto; margin: 0.4rem 0; font-size: 0.8rem; border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem; background: var(--row-alt); font-family: var(--mono); }
 .pxc-cfg-dialog-inner button { font: inherit; margin-top: 0.2rem; padding: 0.4rem 0.85rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
 .pxc-cfg-dialog-inner button:hover { background: var(--row-alt); }
-/* PXC pod-logs block (embedded) — align with design tokens */
-#pxc-pod-logs .pxc-plg-table th { background: #ecfeff !important; color: #134e4a !important; }
-#pxc-pod-logs .pxc-gle-wrap { border-radius: var(--radius-sm) !important; }
-#pxc-log-modal-pxc .pxc-plg-dlg, #pxc-gle-modal-pxc .pxc-gle-dlg { border-radius: var(--radius) !important; }
+/* Pod-logs sections (PXC and Percona Server share markup; each section has its own id) */
+.pod-logs-top .pxc-plg-blob,
+.pod-logs-top .pxc-gle-blob { display: none !important; }
+.pod-logs-top .pxc-plg-pod-yaml-store { display: none !important; }
+#pxc-pod-logs .pxc-plg-table th,
+#ps-pod-logs .pxc-plg-table th { background: #ecfeff !important; color: #134e4a !important; }
+#pxc-pod-logs .pxc-gle-wrap,
+#ps-pod-logs .pxc-gle-wrap { border-radius: var(--radius-sm) !important; }
+#pxc-log-modal-pxc .pxc-plg-dlg, #pxc-gle-modal-pxc .pxc-gle-dlg,
+#ps-log-modal-ps .pxc-plg-dlg, #ps-gle-modal-ps .pxc-gle-dlg { border-radius: var(--radius) !important; }
 /* Pluggable collector output (no outer title) */
 .report-subsection {
   margin: 2.25rem 0 0;
