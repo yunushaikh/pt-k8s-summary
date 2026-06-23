@@ -22,7 +22,7 @@ func GatherPodLogsForReportHTML(dumpRoot, galeraSince, reportOutPath string, pod
 	if pods != nil {
 		k8s = pods.K8sMetaByPod(dumpRoot, now)
 	}
-	return gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath, k8s, pods)
+	return gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath, k8s, pods, "pxc", true)
 }
 
 const pxcLogMaxBytes = 750 * 1024 // per file embed
@@ -232,7 +232,7 @@ func capRunes(s string) string {
 	return string([]rune(s)[:pxcLogMaxRunes]) + "\n… [truncated for report embed]"
 }
 
-func findPodLogRows(dumpRoot, reportOutPath string) ([]podLogRow, error) {
+func findPodLogRows(dumpRoot, reportOutPath, wantKind string, podLoader *jpreport.PodLoader) ([]podLogRow, error) {
 	ents, err := os.ReadDir(dumpRoot)
 	if err != nil {
 		return nil, err
@@ -253,7 +253,8 @@ func findPodLogRows(dumpRoot, reportOutPath string) ([]podLogRow, error) {
 				continue
 			}
 			podName := pEnt.Name()
-			if !isPXCWorkloadPodName(podName) {
+			kind := jpreport.OperatorKindForPod(podLoader, nsName, podName)
+			if kind != wantKind {
 				continue
 			}
 			podPath := filepath.Join(nsPath, podName)
@@ -318,8 +319,8 @@ func findPodLogRows(dumpRoot, reportOutPath string) ([]podLogRow, error) {
 	return out, nil
 }
 
-func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s map[string]jpreport.PodK8sMeta, pods *jpreport.PodLoader) (string, error) {
-	rows, err := findPodLogRows(dumpRoot, reportOutPath)
+func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s map[string]jpreport.PodK8sMeta, pods *jpreport.PodLoader, wantKind string, includeGalera bool) (string, error) {
+	rows, err := findPodLogRows(dumpRoot, reportOutPath, wantKind, pods)
 	if err != nil {
 		return "", err
 	}
@@ -345,7 +346,7 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 		gleErr     string
 		gleErrText string
 	)
-	if len(glePaths) > 0 {
+	if includeGalera && len(glePaths) > 0 {
 		out, serr, e := runPTGaleraLogExplainer(glePaths, galeraSince)
 		if e != nil {
 			gleErrText = e.Error()
@@ -362,7 +363,7 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 		gleErrText = "" // not an error; use gleInfo in UI
 	}
 	gleInfo := ""
-	if len(glePaths) == 0 {
+	if includeGalera && len(glePaths) == 0 {
 		gleInfo = "No PXC member mysqld-error.log files were found (look for pods matching *-pxc-<n> with var/lib/mysql/mysqld-error.log)."
 	}
 	var b strings.Builder

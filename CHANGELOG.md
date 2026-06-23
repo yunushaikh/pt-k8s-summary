@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-23
+
+### Added
+
+- **Percona Server for MySQL operator** support in cluster dump reports: CR inventory (MySQL, HAProxy, Router, Orchestrator), backups, pod logs, Helm/PMM, PITR, updateStrategy, unsafeFlags/pause, expose, and TLS certificates
+- Flexible list-YAML discovery (`internal/dumpfiles`) with preferred collector filenames plus kind-based fallback when `pt-k8s-debug-collector` naming changes
+
 ## [0.5.0] - 2026-06-18
 
 ### Added

@@ -14,6 +14,9 @@ var reportNodesHTML string
 //go:embed pxc_backup_section.tmpl
 var pxcBackupHTML string
 
+//go:embed ps_cluster_section.tmpl
+var psClusterHTML string
+
 //go:embed report_extra.html
 var reportExtraHTML string
 
@@ -24,4 +27,4 @@ var jpreportModalsHTML string
 var reportTailTmpl string
 
 // htmlTemplate is the full text/template source (define "condCell" in report_tail.tmpl).
-var htmlTemplate = reportHeadHTML + reportPodLogsHTML + reportNodesHTML + pxcBackupHTML + reportExtraHTML + jpreportModalsHTML + reportTailTmpl
+var htmlTemplate = reportHeadHTML + reportPodLogsHTML + reportNodesHTML + pxcBackupHTML + psClusterHTML + reportExtraHTML + jpreportModalsHTML + reportTailTmpl

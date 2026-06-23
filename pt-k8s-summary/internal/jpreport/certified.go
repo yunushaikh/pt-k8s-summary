@@ -31,24 +31,34 @@ func NewCertifiedImageCache(enabled bool) *CertifiedImageCache {
 // Lookup returns normalized certified image refs (lowercase repo:tag), the documentation URL
 // (with #percona-certified-images), and an error message if the list could not be loaded.
 func (c *CertifiedImageCache) Lookup(crVersionRaw string) (refs map[string]struct{}, docURL string, errMsg string) {
+	return c.lookupOperator("pxc", crVersionRaw, certifiedPXCLinkURL, fetchCertifiedPXCImageRefs)
+}
+
+// LookupPS is like Lookup for Percona Server for MySQL operator CRs.
+func (c *CertifiedImageCache) LookupPS(crVersionRaw string) (refs map[string]struct{}, docURL string, errMsg string) {
+	return c.lookupOperator("ps", crVersionRaw, certifiedPSLinkURL, fetchCertifiedPSImageRefs)
+}
+
+func (c *CertifiedImageCache) lookupOperator(cacheKey, crVersionRaw string, linkFn func(string) string, fetchFn func(string) (map[string]struct{}, string, error)) (refs map[string]struct{}, docURL string, errMsg string) {
 	v := strings.TrimSpace(crVersionRaw)
-	docURL = certifiedPXCLinkURL(v)
+	docURL = linkFn(v)
 	if v == "" {
 		return nil, docURL, "no spec.crVersion on the Custom Resource"
 	}
 	if !c.enabled {
 		return nil, docURL, "certified image fetch disabled (-certified-images=false)"
 	}
-	if ent, ok := c.store[v]; ok {
+	key := cacheKey + ":" + v
+	if ent, ok := c.store[key]; ok {
 		return ent.refs, ent.url, ent.errMsg
 	}
-	refs, u, err := fetchCertifiedPerconaImageRefs(v)
+	refs, u, err := fetchFn(v)
 	ent := cachedCertified{refs: refs, url: u}
 	if err != nil {
 		ent.errMsg = err.Error()
 		ent.refs = nil
 	}
-	c.store[v] = ent
+	c.store[key] = ent
 	return ent.refs, ent.url, ent.errMsg
 }
 
@@ -75,7 +85,31 @@ func sanitizeCRVersionForURL(v string) string {
 
 var htmlCertifiedImageRE = regexp.MustCompile(`(?i)\b(percona/[a-z0-9./-]+:[a-z0-9._-]+)\b`)
 
-func fetchCertifiedPerconaImageRefs(version string) (map[string]struct{}, string, error) {
+func certifiedPSLinkURL(version string) string {
+	v := sanitizeCRVersionForURL(version)
+	if v == "" {
+		return "https://docs.percona.com/percona-operator-for-mysql/ps/ReleaseNotes/"
+	}
+	return fmt.Sprintf(
+		"https://docs.percona.com/percona-operator-for-mysql/ps/ReleaseNotes/Kubernetes-Operator-for-PS-RN%s.html#percona-certified-images",
+		v,
+	)
+}
+
+func fetchCertifiedPSImageRefs(version string) (map[string]struct{}, string, error) {
+	v := sanitizeCRVersionForURL(version)
+	if v == "" {
+		return nil, certifiedPSLinkURL(version), fmt.Errorf("invalid or empty crVersion for release notes URL")
+	}
+	base := fmt.Sprintf(
+		"https://docs.percona.com/percona-operator-for-mysql/ps/ReleaseNotes/Kubernetes-Operator-for-PS-RN%s.html",
+		v,
+	)
+	docURL := certifiedPSLinkURL(version)
+	return fetchCertifiedFromReleaseNotesURL(base, docURL)
+}
+
+func fetchCertifiedPXCImageRefs(version string) (map[string]struct{}, string, error) {
 	v := sanitizeCRVersionForURL(version)
 	if v == "" {
 		return nil, certifiedPXCLinkURL(version), fmt.Errorf("invalid or empty crVersion for release notes URL")
@@ -85,7 +119,10 @@ func fetchCertifiedPerconaImageRefs(version string) (map[string]struct{}, string
 		v,
 	)
 	docURL := certifiedPXCLinkURL(version)
+	return fetchCertifiedFromReleaseNotesURL(base, docURL)
+}
 
+func fetchCertifiedFromReleaseNotesURL(base, docURL string) (map[string]struct{}, string, error) {
 	client := &http.Client{Timeout: 45 * time.Second}
 	resp, err := client.Get(base)
 	if err != nil {
