@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Percona Server for MySQL operator** support in cluster dump reports: CR inventory (MySQL, HAProxy, Router, Orchestrator), backups, pod logs, Helm/PMM, PITR, updateStrategy, unsafeFlags/pause, expose, and TLS certificates
 - Flexible list-YAML discovery (`internal/dumpfiles`) with preferred collector filenames plus kind-based fallback when `pt-k8s-debug-collector` naming changes
 
+### Fixed
+
+- **Percona Server pod logs section** no longer dumps thousands of lines of hidden log embeds onto the page; PS sections now use scoped CSS/JS ids (`#ps-pod-logs`, `ps-plg-stash-*`, `ps-log-modal-ps`) matching the PXC pod-logs layout
+
 ## [0.5.0] - 2026-06-18
 
 ### Added
