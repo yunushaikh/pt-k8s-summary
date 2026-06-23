@@ -122,6 +122,7 @@ type processingReport struct {
 	DumpRootDisplay  string
 	NodesPathDisplay string
 	PXCYAMLRelPaths  []string
+	PSYAMLRelPaths   []string
 	CollectorErrors  string
 	HasErrorsFile    bool
 	// GaleraSince is the pt-galera-log-explainer --since= value (RFC3339), or "".
@@ -337,6 +338,14 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		podLogHTML = htempl.HTML(h)
 		hasPodLogs = true
 	}
+	var psPodLogHTML htempl.HTML
+	var hasPSPodLogs bool
+	if h, err := collector.GatherPSPodLogsForReportHTML(dumpAbs, out, podsData, now); err != nil {
+		fmt.Fprintf(os.Stderr, "ps pod logs: %v\n", err)
+	} else if h != "" {
+		psPodLogHTML = htempl.HTML(h)
+		hasPSPodLogs = true
+	}
 	certCache := jpreport.NewCertifiedImageCache(certifiedImages)
 	pxcRows, pxcFileCount, err := jpreport.LoadPXCRowsFromDump(dumpAbs, now, podsData, certCache)
 	if err != nil {
@@ -353,6 +362,18 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 			rel = p
 		}
 		proc.PXCYAMLRelPaths = append(proc.PXCYAMLRelPaths, filepath.ToSlash(rel))
+	}
+	psAbsPaths, err := jpreport.ListPSYAMLFiles(dumpAbs)
+	if err != nil {
+		return fmt.Errorf("ps yaml list: %w", err)
+	}
+	proc.PSYAMLRelPaths = make([]string, 0, len(psAbsPaths))
+	for _, p := range psAbsPaths {
+		rel, err := filepath.Rel(dumpAbs, p)
+		if err != nil {
+			rel = p
+		}
+		proc.PSYAMLRelPaths = append(proc.PSYAMLRelPaths, filepath.ToSlash(rel))
 	}
 	pxcMeta := fmt.Sprintf("Found %d cluster(s) in %d YAML file(s).", len(pxcRows), pxcFileCount)
 	showHAProxyCol := false
@@ -372,6 +393,36 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	backupMeta := ""
 	if len(backupRows) > 0 {
 		backupMeta = fmt.Sprintf("Found %d backup(s) in %d YAML file(s).", len(backupRows), backupFileCount)
+	}
+	psRows, psFileCount, err := jpreport.LoadPSRowsFromDump(dumpAbs, now, podsData, certCache)
+	if err != nil {
+		return fmt.Errorf("ps resources: %w", err)
+	}
+	psMeta := ""
+	if len(psRows) > 0 {
+		psMeta = fmt.Sprintf("Found %d cluster(s) in %d YAML file(s).", len(psRows), psFileCount)
+	}
+	showPSHAProxyCol := false
+	showPSRouterCol := false
+	showPSOrchestratorCol := false
+	for _, r := range psRows {
+		if r.HAProxyEnabled {
+			showPSHAProxyCol = true
+		}
+		if r.RouterEnabled {
+			showPSRouterCol = true
+		}
+		if r.OrchestratorEnabled {
+			showPSOrchestratorCol = true
+		}
+	}
+	psBackupRows, psBackupFileCount, err := jpreport.LoadPSBackupRowsFromDump(dumpAbs, now, podsData)
+	if err != nil {
+		return fmt.Errorf("ps backups: %w", err)
+	}
+	psBackupMeta := ""
+	if len(psBackupRows) > 0 {
+		psBackupMeta = fmt.Sprintf("Found %d backup(s) in %d YAML file(s).", len(psBackupRows), psBackupFileCount)
 	}
 
 	extraSections := collector.GatherSections(dumpCtx)
@@ -405,6 +456,18 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		ExtraSections   []collector.Section
 		HasPodLogs      bool
 		PodLogsHTML     htempl.HTML
+		HasPSPodLogs    bool
+		PSPodLogsHTML   htempl.HTML
+		PSEmpty         bool
+		PSMeta          string
+		PSMainColspan   int
+		PSRows          []jpreport.PSRowTmpl
+		ShowPSHAProxyCol  bool
+		ShowPSRouterCol   bool
+		ShowPSOrchestratorCol bool
+		PSBackupEmpty   bool
+		PSBackupMeta    string
+		PSBackupRows    []jpreport.BackupRowTmpl
 	}{
 		Proc:            proc,
 		GeneratedAt:     now.UTC().Format(time.RFC3339),
@@ -423,13 +486,25 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		ExtraSections:   extraSections,
 		HasPodLogs:      hasPodLogs,
 		PodLogsHTML:     podLogHTML,
+		HasPSPodLogs:    hasPSPodLogs,
+		PSPodLogsHTML:   psPodLogHTML,
+		PSEmpty:         len(psRows) == 0,
+		PSMeta:          psMeta,
+		PSMainColspan:   8,
+		PSRows:          psRows,
+		ShowPSHAProxyCol:  showPSHAProxyCol,
+		ShowPSRouterCol:   showPSRouterCol,
+		ShowPSOrchestratorCol: showPSOrchestratorCol,
+		PSBackupEmpty:   len(psBackupRows) == 0,
+		PSBackupMeta:    psBackupMeta,
+		PSBackupRows:    psBackupRows,
 	}
 
 	if err := tmpl.Execute(outF, execData); err != nil {
 		return fmt.Errorf("render: %w", err)
 	}
 
-	printWroteReport(out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount)
+	printWroteReport(out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount, len(psRows), psFileCount, len(psBackupRows), psBackupFileCount)
 	return nil
 }
 

@@ -201,6 +201,116 @@ func (l *PodLoader) distinctImagesForPXCInstance(namespace, instance string) []p
 	return out
 }
 
+// distinctImagesForPSInstance returns unique container images from pods belonging to a PerconaServerMySQL CR.
+func (l *PodLoader) distinctImagesForPSInstance(namespace, instance string) []podImageRef {
+	if l == nil {
+		return nil
+	}
+	ns := strings.TrimSpace(namespace)
+	inst := strings.TrimSpace(instance)
+	seen := make(map[string]string)
+	for i := range l.all {
+		p := &l.all[i]
+		if strings.TrimSpace(p.Metadata.Namespace) != ns {
+			continue
+		}
+		if !podMatchesPSWorkload(p, inst) {
+			continue
+		}
+		for _, c := range p.Spec.InitContainers {
+			addPodImageSeen(seen, c.Image)
+		}
+		for _, c := range p.Spec.Containers {
+			addPodImageSeen(seen, c.Image)
+		}
+	}
+	norms := make([]string, 0, len(seen))
+	for n := range seen {
+		norms = append(norms, n)
+	}
+	sort.Strings(norms)
+	out := make([]podImageRef, 0, len(norms))
+	for _, n := range norms {
+		out = append(out, podImageRef{Display: seen[n], Norm: n})
+	}
+	return out
+}
+
+func podMatchesPSWorkload(p *podItem, instance string) bool {
+	if p == nil {
+		return false
+	}
+	l := p.Metadata.Labels
+	if l == nil {
+		return false
+	}
+	if strings.TrimSpace(l["app.kubernetes.io/instance"]) != instance {
+		return false
+	}
+	if strings.TrimSpace(l["app.kubernetes.io/part-of"]) == "percona-server" {
+		switch strings.TrimSpace(l["app.kubernetes.io/component"]) {
+		case "database", "proxy", "router", "orchestrator":
+			return true
+		}
+	}
+	name := strings.ToLower(p.Metadata.Name)
+	instLow := strings.ToLower(instance)
+	if strings.HasPrefix(name, instLow+"-mysql-") ||
+		strings.HasPrefix(name, instLow+"-haproxy-") ||
+		strings.HasPrefix(name, instLow+"-router-") ||
+		strings.HasPrefix(name, instLow+"-orc-") {
+		return true
+	}
+	return false
+}
+
+// PSPodNamesForInstance returns sorted pod names for a PS cluster component (database, proxy, router, orchestrator).
+// nameFrag is a fallback substring match when labels are missing (e.g. "-mysql-", "-haproxy-").
+func (l *PodLoader) PSPodNamesForInstance(namespace, instance, component, nameFrag string) []string {
+	if l == nil {
+		return nil
+	}
+	ns := strings.TrimSpace(namespace)
+	inst := strings.TrimSpace(instance)
+	comp := strings.TrimSpace(component)
+	var names []string
+	seen := make(map[string]struct{})
+	for i := range l.all {
+		p := &l.all[i]
+		if strings.TrimSpace(p.Metadata.Namespace) != ns {
+			continue
+		}
+		match := false
+		if podMatchesPSWorkload(p, inst) {
+			lbl := p.Metadata.Labels
+			if lbl != nil && strings.TrimSpace(lbl["app.kubernetes.io/component"]) == comp {
+				match = true
+			}
+		}
+		if !match && nameFrag != "" {
+			n := strings.ToLower(p.Metadata.Name)
+			instLow := strings.ToLower(inst)
+			if strings.HasPrefix(n, instLow) && strings.Contains(n, strings.ToLower(nameFrag)) {
+				match = true
+			}
+		}
+		if !match {
+			continue
+		}
+		pn := strings.TrimSpace(p.Metadata.Name)
+		if pn == "" {
+			continue
+		}
+		if _, ok := seen[pn]; ok {
+			continue
+		}
+		seen[pn] = struct{}{}
+		names = append(names, pn)
+	}
+	sort.Strings(names)
+	return names
+}
+
 // podNameForBackupCR returns the pod metadata.name for a backup job whose annotation
 // percona.com/backup-name matches the PerconaXtraDBClusterBackup CR name.
 func (l *PodLoader) podNameForBackupCR(namespace, backupCRName string) string {
@@ -233,6 +343,98 @@ func backupNameMatchesPodMetadata(labels, annotations map[string]string, backupC
 		return true
 	}
 	return false
+}
+
+// PodOperatorKind returns "pxc", "ps", or "" for a pod using merged pods.yaml labels, with name-based fallback.
+func (l *PodLoader) PodOperatorKind(namespace, podName string) string {
+	ns := strings.TrimSpace(namespace)
+	pn := strings.TrimSpace(podName)
+	if l != nil {
+		for i := range l.all {
+			p := &l.all[i]
+			if p.Metadata.Namespace == ns && p.Metadata.Name == pn {
+				return operatorKindFromPodLabels(p.Metadata.Labels, pn)
+			}
+		}
+	}
+	return operatorKindFromPodLabels(nil, pn)
+}
+
+func operatorKindFromPodLabels(labels map[string]string, podName string) string {
+	if labels != nil {
+		partOf := strings.TrimSpace(labels["app.kubernetes.io/part-of"])
+		comp := strings.TrimSpace(labels["app.kubernetes.io/component"])
+		switch partOf {
+		case "percona-server":
+			return "ps"
+		case "pxc-operator", "percona-xtradb-cluster-operator":
+			return "pxc"
+		}
+		switch comp {
+		case "pxc", "proxysql":
+			return "pxc"
+		case "database", "router", "orchestrator":
+			if partOf == "percona-server" || comp != "" {
+				return "ps"
+			}
+		case "proxy":
+			if partOf == "percona-server" {
+				return "ps"
+			}
+			if partOf != "" && partOf != "percona-server" {
+				return "pxc"
+			}
+		case "haproxy", "operator":
+			if partOf == "percona-server" {
+				return "ps"
+			}
+			if partOf == "pxc" || strings.Contains(partOf, "pxc") {
+				return "pxc"
+			}
+		}
+		if strings.TrimSpace(labels["app.kubernetes.io/name"]) == "pxc-operator" {
+			return "pxc"
+		}
+		if strings.TrimSpace(labels["app.kubernetes.io/name"]) == "percona-server-mysql-operator" {
+			return "ps"
+		}
+	}
+	return operatorKindFromPodName(podName)
+}
+
+// OperatorKindForPod classifies a pod as "pxc", "ps", or "" using pods.yaml when available.
+func OperatorKindForPod(pods *PodLoader, namespace, podName string) string {
+	if pods != nil {
+		return pods.PodOperatorKind(namespace, podName)
+	}
+	return operatorKindFromPodName(podName)
+}
+
+func operatorKindFromPodName(podName string) string {
+	p := strings.ToLower(strings.TrimSpace(podName))
+	if p == "" {
+		return ""
+	}
+	if strings.Contains(p, "percona-server-mysql-operator") {
+		return "ps"
+	}
+	if strings.Contains(p, "-pxc-") || strings.Contains(p, "proxysql") ||
+		strings.Contains(p, "pxc-operator") || strings.Contains(p, "xtradb-cluster-operator") {
+		return "pxc"
+	}
+	if strings.Contains(p, "-mysql-") || strings.Contains(p, "-router-") || strings.Contains(p, "-orc-") {
+		if strings.Contains(p, "-pxc-") {
+			return "pxc"
+		}
+		return "ps"
+	}
+	if strings.Contains(p, "-haproxy-") {
+		if strings.HasPrefix(p, "ps-") {
+			return "ps"
+		}
+		return "pxc"
+	}
+	return ""
 }
 
 func addPodImageSeen(seen map[string]string, image string) {

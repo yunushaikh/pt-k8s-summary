@@ -4,3 +4,9 @@
 {{ .PodLogsHTML }}
 </section>
 {{ end }}
+{{ if .HasPSPodLogs }}
+<section class="report-section pod-logs-top" id="ps-pod-logs">
+<h2 class="pxc-pod-logs-h2">Percona Server · operator &amp; pod logs</h2>
+{{ .PSPodLogsHTML }}
+</section>
+{{ end }}

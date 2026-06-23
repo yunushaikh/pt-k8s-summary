@@ -30,6 +30,11 @@ func (pxcUnsafePauseRowSection) Collect(ctx dumpctx.Context) (Section, error) {
 	return Section{HTML: template.HTML(renderUnsafePauseRow(unsafeRows, pauseRows))}, nil
 }
 
+func renderUnsafePauseRow(unsafeClusters []unsafeFlagCluster, pauseRows []pauseRow) string {
+	return renderUnsafePauseRowWithKeys(unsafeClusters, pauseRows, pxcUnsafeFlagKeys, "pxc-unsafe-flags-pause",
+		"PXC · unsafeFlags", "PXC · spec.pause", pxcCRListFile, "PerconaXtraDBCluster")
+}
+
 const rowPXCSep = "\x00"
 
 func rowPXCKey(name, namespace string) string {
@@ -44,7 +49,7 @@ func splitRowPXCKey(k string) (name, namespace string) {
 	return k[:i], k[i+len(rowPXCSep):]
 }
 
-func renderUnsafePauseRow(unsafeClusters []unsafeFlagCluster, pauseRows []pauseRow) string {
+func renderUnsafePauseRowWithKeys(unsafeClusters []unsafeFlagCluster, pauseRows []pauseRow, flagKeys []string, sectionID, unsafeTitle, pauseTitle, crFile, crKind string) string {
 	pauseBy := make(map[string]pauseRow, len(pauseRows))
 	for _, p := range pauseRows {
 		pauseBy[rowPXCKey(p.Name, p.Namespace)] = p
@@ -102,20 +107,20 @@ func renderUnsafePauseRow(unsafeClusters []unsafeFlagCluster, pauseRows []pauseR
 .pause-val.true { color: #b91c1c; background: linear-gradient(180deg,#fef2f2,#fee2e2); padding: 0.25rem 0.45rem; border-radius: 8px; display: inline-block; border: 1px solid #fecaca; }
 .pause-val.false { color: #166534; background: linear-gradient(180deg,#f0fdf4,#dcfce7); padding: 0.25rem 0.45rem; border-radius: 8px; display: inline-block; border: 1px solid #bbf7d0; }
 .pause-val.unset { color: #64748b; background: #f8fafc; padding: 0.25rem 0.45rem; border-radius: 8px; display: inline-block; border: 1px solid #e2e8f0; font-weight: 700; }
-#pxc-unsafe-flags-pause .unsafe-tab-row { flex-wrap: nowrap; gap: 0.28rem; }
-#pxc-unsafe-flags-pause .unsafe-tab { flex: 1 1 0; min-width: 0; max-width: none; }
-#pxc-unsafe-flags-pause .unsafe-tab-name { font-size: 0.6rem; padding: 0.22rem 0.2rem; word-break: break-word; hyphens: auto; }
-#pxc-unsafe-flags-pause .unsafe-tab-st { font-size: 0.62rem; padding: 0.28rem 0.2rem; }
+#` + sectionID + ` .unsafe-tab-row { flex-wrap: nowrap; gap: 0.28rem; }
+#` + sectionID + ` .unsafe-tab { flex: 1 1 0; min-width: 0; max-width: none; }
+#` + sectionID + ` .unsafe-tab-name { font-size: 0.6rem; padding: 0.22rem 0.2rem; word-break: break-word; hyphens: auto; }
+#` + sectionID + ` .unsafe-tab-st { font-size: 0.62rem; padding: 0.28rem 0.2rem; }
 @media (max-width: 560px) {
-	#pxc-unsafe-flags-pause .unsafe-tab-row { flex-wrap: wrap; }
+	#` + sectionID + ` .unsafe-tab-row { flex-wrap: wrap; }
 }
 </style>`)
 
 	b.WriteString(`<div class="pxc-up-stack">`)
 
 	// —— unsafeFlags ——
-	b.WriteString(`<div class="pxc-up-block pxc-up-unsafe"><h3 class="pxc-up-subh3">PXC · unsafeFlags</h3>`)
-	b.WriteString(`<p class="pxc-up-note">Values from <code>spec.unsafeFlags</code> in <code>perconaxtradbclusters.pxc.percona.com.yaml</code>. <strong>Active</strong> means the flag is <code>true</code> (unsafe override on). <strong>Inactive</strong> is <code>false</code>. <strong>Not set</strong> means the key is absent.</p>`)
+	b.WriteString(`<div class="pxc-up-block pxc-up-unsafe"><h3 class="pxc-up-subh3">` + html.EscapeString(unsafeTitle) + `</h3>`)
+	b.WriteString(`<p class="pxc-up-note">Values from <code>spec.unsafeFlags</code> in <code>` + html.EscapeString(crFile) + `</code>. <strong>Active</strong> means the flag is <code>true</code> (unsafe override on). <strong>Inactive</strong> is <code>false</code>. <strong>Not set</strong> means the key is absent.</p>`)
 	if len(keys) == 0 {
 		b.WriteString(`<p class="meta">No cluster rows.</p>`)
 	}
@@ -134,14 +139,14 @@ func renderUnsafePauseRow(unsafeClusters []unsafeFlagCluster, pauseRows []pauseR
 		b.WriteString(`</span><span class="pxc-cluster-sep">·</span><span class="pxc-cluster-ns">`)
 		b.WriteString(html.EscapeString(ns))
 		b.WriteString(`</span></div>`)
-		b.WriteString(renderUnsafeTabRowHTML(uc))
+		b.WriteString(renderUnsafeTabRowHTMLKeys(uc, flagKeys))
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
 
 	// —— spec.pause ——
-	b.WriteString(`<div class="pxc-up-block pxc-up-pause"><h3 class="pxc-up-subh3">PXC · spec.pause</h3>`)
-	b.WriteString(`<p class="pxc-up-note">From <code>spec.pause</code> in each <code>PerconaXtraDBCluster</code> CR. <code>true</code> pauses reconciliation (highlighted in red). <code>false</code> is green.</p>`)
+	b.WriteString(`<div class="pxc-up-block pxc-up-pause"><h3 class="pxc-up-subh3">` + html.EscapeString(pauseTitle) + `</h3>`)
+	b.WriteString(`<p class="pxc-up-note">From <code>spec.pause</code> in each <code>` + html.EscapeString(crKind) + `</code> CR. <code>true</code> pauses reconciliation (highlighted in red). <code>false</code> is green.</p>`)
 	if len(keys) == 0 {
 		b.WriteString(`<p class="meta">No cluster rows.</p>`)
 	} else {

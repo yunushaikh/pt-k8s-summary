@@ -123,9 +123,13 @@ func parseBoolish(v any) (bool, bool) {
 
 // renderUnsafeTabRowHTML returns the flag tab strip for one cluster (no outer wrapper or styles).
 func renderUnsafeTabRowHTML(c unsafeFlagCluster) string {
+	return renderUnsafeTabRowHTMLKeys(c, pxcUnsafeFlagKeys)
+}
+
+func renderUnsafeTabRowHTMLKeys(c unsafeFlagCluster, keys []string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="unsafe-tab-row">`)
-	for _, key := range pxcUnsafeFlagKeys {
+	for _, key := range keys {
 		tri := c.Flags[key]
 		var bodyClass, label string
 		switch {

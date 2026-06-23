@@ -291,6 +291,8 @@ h3.addl-h3 {
 <li><strong>Nodes manifest</strong>: <code>{{ .Proc.NodesPathDisplay }}</code></li>
 <li><strong><code>perconaxtradbclusters.pxc.percona.com.yaml</code> files</strong> ({{ len .Proc.PXCYAMLRelPaths }}):{{ if .Proc.PXCYAMLRelPaths }}
 <ul class="proc-list">{{ range .Proc.PXCYAMLRelPaths }}<li><code>{{ . }}</code></li>{{ end }}</ul>{{ else }} <em>none found under the dump root</em>{{ end }}</li>
+<li><strong><code>perconaservermysqls.ps.percona.com.yaml</code> files</strong> ({{ len .Proc.PSYAMLRelPaths }}):{{ if .Proc.PSYAMLRelPaths }}
+<ul class="proc-list">{{ range .Proc.PSYAMLRelPaths }}<li><code>{{ . }}</code></li>{{ end }}</ul>{{ else }} <em>none found under the dump root</em>{{ end }}</li>
 {{ if .Proc.HasErrorsFile }}
 <li><strong>Collector <code>errors.txt</code></strong>: present{{ if .Proc.CollectorErrors }} — use <strong>View errors</strong> under Processing details to read the excerpt{{ end }}</li>
 {{ else }}

@@ -16,5 +16,10 @@ func ownerSections() []SectionCollector {
 		pxcUpdateStrategySection{},
 		certificatesSection{},
 		pxcUnsafePauseRowSection{},
+		psHelmPMMSection{},
+		psPITRSection{},
+		psUpdateStrategySection{},
+		psUnsafePauseSection{},
+		psExposeSection{},
 	}
 }
