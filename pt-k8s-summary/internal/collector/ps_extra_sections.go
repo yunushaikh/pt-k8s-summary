@@ -17,6 +17,7 @@ type psBackupScheduleSection struct{}
 
 func (psBackupScheduleSection) ID() string    { return "ps-backup-schedules" }
 func (psBackupScheduleSection) Title() string { return "Percona Server · backup schedules" }
+func (psBackupScheduleSection) Group() SectionGroup { return GroupPS }
 
 func (psBackupScheduleSection) Collect(ctx dumpctx.Context) (Section, error) {
 	clusters, err := loadPSClusters(ctx.Root())
@@ -92,6 +93,7 @@ type psStorageSection struct{}
 
 func (psStorageSection) ID() string    { return "ps-backup-storages" }
 func (psStorageSection) Title() string { return "Percona Server · backup storages" }
+func (psStorageSection) Group() SectionGroup { return GroupPS }
 
 func (psStorageSection) Collect(ctx dumpctx.Context) (Section, error) {
 	clusters, err := loadPSClusters(ctx.Root())
@@ -204,6 +206,7 @@ type psUpgradeSection struct{}
 
 func (psUpgradeSection) ID() string    { return "ps-upgrade-options" }
 func (psUpgradeSection) Title() string { return "Percona Server · upgradeOptions" }
+func (psUpgradeSection) Group() SectionGroup { return GroupPS }
 
 func (psUpgradeSection) Collect(ctx dumpctx.Context) (Section, error) {
 	clusters, err := loadPSClusters(ctx.Root())
@@ -244,6 +247,7 @@ type psSidecarToolkitSection struct{}
 
 func (psSidecarToolkitSection) ID() string    { return "ps-sidecar-toolkit" }
 func (psSidecarToolkitSection) Title() string { return "Percona Server · sidecars, sidecar PVCs & toolkit" }
+func (psSidecarToolkitSection) Group() SectionGroup { return GroupPS }
 
 func (psSidecarToolkitSection) Collect(ctx dumpctx.Context) (Section, error) {
 	clusters, err := loadPSClusters(ctx.Root())
@@ -330,6 +334,7 @@ type psPVCSizingSection struct{}
 
 func (psPVCSizingSection) ID() string    { return "ps-pvc-sizing" }
 func (psPVCSizingSection) Title() string { return "Percona Server · MySQL volume sizing" }
+func (psPVCSizingSection) Group() SectionGroup { return GroupPS }
 
 func (psPVCSizingSection) Collect(ctx dumpctx.Context) (Section, error) {
 	clusters, err := loadPSClusters(ctx.Root())
@@ -393,6 +398,7 @@ type psStatusSection struct{}
 
 func (psStatusSection) ID() string    { return "ps-status" }
 func (psStatusSection) Title() string { return "Percona Server · cluster status" }
+func (psStatusSection) Group() SectionGroup { return GroupPS }
 
 func (psStatusSection) Collect(ctx dumpctx.Context) (Section, error) {
 	clusters, err := loadPSClusters(ctx.Root())
@@ -486,6 +492,7 @@ type psTopologySection struct{}
 
 func (psTopologySection) ID() string    { return "ps-topology" }
 func (psTopologySection) Title() string { return "Percona Server · topology" }
+func (psTopologySection) Group() SectionGroup { return GroupPS }
 
 func (psTopologySection) Collect(ctx dumpctx.Context) (Section, error) {
 	h, err := renderPSTopologyHTML(ctx.Root(), nil, nil)

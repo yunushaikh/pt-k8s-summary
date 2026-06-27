@@ -20,6 +20,7 @@ type pxcJemallocSection struct{}
 
 func (pxcJemallocSection) ID() string    { return "pxc-jemalloc" }
 func (pxcJemallocSection) Title() string { return "PXC · jemalloc" }
+func (pxcJemallocSection) Group() SectionGroup { return GroupPXC }
 
 func (pxcJemallocSection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPXCJemallocRows(ctx.Root())

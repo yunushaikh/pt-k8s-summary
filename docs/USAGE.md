@@ -32,6 +32,9 @@ pt-k8s-summary -dump ./cluster-dump -certified-images=false
 # Galera timeline: only events on/after a time (needs pt-galera-log-explainer on PATH)
 pt-k8s-summary -dump ./cluster-dump -galera-since 2023-01-05T03:24:26.000000Z
 
+# Experimental grouped layout (technology tabs: Kubernetes | PXC | Percona Server)
+pt-k8s-summary -dump ./cluster-dump -layout grouped -out reports/grouped.html
+
 # Print version
 pt-k8s-summary -version
 ```
@@ -46,8 +49,28 @@ pt-k8s-summary -version
 | `-out` | Output HTML path |
 | `-galera-since` | RFC3339 timestamp for pt-galera-log-explainer `--since=` |
 | `-certified-images` | Fetch/compare Percona certified images (default: `true`) |
+| `-layout` | Report layout: `classic` (default, linear sections) or `grouped` (beta: tabbed Kubernetes / PXC / Percona Server) |
 
 **Positional argument:** cluster dump archive (`.tar.gz` or `.tgz`). Use either the archive **or** `-dump`, not both.
+
+### Grouped layout (beta)
+
+`-layout grouped` reorganizes the HTML report into tabs:
+
+| Tab | Content |
+|-----|---------|
+| **Kubernetes** | Always shown — nodes, cluster events, PVC inventory |
+| **Percona XtraDB Cluster** | Shown only when PXC CRs, backups, pod logs, or PXC collector sections exist |
+| **Percona Server for MySQL** | Shown only when PS CRs, backups, pod logs, or PS collector sections exist |
+
+Compare layouts from the same dump:
+
+```bash
+pt-k8s-summary cluster-dump.tar.gz -out reports/classic.html
+pt-k8s-summary cluster-dump.tar.gz -layout grouped -out reports/grouped.html
+```
+
+Classic layout remains the default until you decide to adopt grouped permanently.
 
 ## Flag order
 

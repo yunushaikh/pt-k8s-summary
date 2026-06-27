@@ -20,11 +20,39 @@ var psClusterHTML string
 //go:embed report_extra.html
 var reportExtraHTML string
 
+//go:embed report_grouped_sections.tmpl
+var reportGroupedSectionsTmpl string
+
+//go:embed report_grouped_tabs.html
+var reportGroupedTabsHTML string
+
+//go:embed report_grouped_common.tmpl
+var reportGroupedCommonTmpl string
+
+//go:embed report_grouped_pxc.tmpl
+var reportGroupedPXCTmpl string
+
+//go:embed report_grouped_ps.tmpl
+var reportGroupedPSTmpl string
+
+//go:embed report_grouped_tabs.js.html
+var reportGroupedTabsJSHTML string
+
 //go:embed jpreport_modals.tmpl
 var jpreportModalsHTML string
 
 //go:embed report_tail.tmpl
 var reportTailTmpl string
 
-// htmlTemplate is the full text/template source (define "condCell" in report_tail.tmpl).
+// htmlTemplate is the classic (linear) report layout.
 var htmlTemplate = reportHeadHTML + reportPodLogsHTML + reportNodesHTML + pxcBackupHTML + psClusterHTML + reportExtraHTML + jpreportModalsHTML + reportTailTmpl
+
+// htmlTemplateGrouped is the beta tabbed layout: Kubernetes | PXC | Percona Server.
+var htmlTemplateGrouped = reportHeadHTML + reportGroupedSectionsTmpl + reportGroupedTabsHTML + reportNodesHTML + reportGroupedCommonTmpl + reportGroupedPXCTmpl + reportGroupedPSTmpl + pxcBackupHTML + psClusterHTML + reportGroupedTabsJSHTML + jpreportModalsHTML + reportTailTmpl
+
+func reportTemplateSource(layout string) string {
+	if layout == "grouped" {
+		return htmlTemplateGrouped
+	}
+	return htmlTemplate
+}

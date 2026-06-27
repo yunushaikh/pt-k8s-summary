@@ -2,7 +2,9 @@
 
 Generate a single **HTML report** from a Kubernetes cluster dump collected with [pt-k8s-debug-collector](https://github.com/percona/k8spxc-debug-collector).
 
-The report summarizes nodes, Percona XtraDB Cluster (PXC) resources, backups, pod logs, events, certificates, and related configuration.
+The report summarizes nodes, Percona XtraDB Cluster (PXC) resources, Percona Server for MySQL, backups, pod logs, events, certificates, and related configuration.
+
+> **Testing in progress — v0.7.0-beta.1:** The new **grouped tab layout** (`-layout grouped`) is available in the latest beta release but still under evaluation. Default output is unchanged (`classic`). Try both layouts on your dumps and report issues before we promote grouped to default. See [docs/USAGE.md](docs/USAGE.md#grouped-layout-beta).
 
 ## Documentation
 
@@ -17,6 +19,7 @@ The report summarizes nodes, Percona XtraDB Cluster (PXC) resources, backups, po
 
 ## Releases
 
+- **Latest beta:** [v0.7.0-beta.1](https://github.com/yunushaikh/pt-k8s-summary/releases/tag/v0.7.0-beta.1) — grouped layout beta (`-layout grouped`); testing in progress
 - [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) — pre-built binaries and `SHA256SUMS`
 - [CHANGELOG.md](CHANGELOG.md) — version history and release notes
 

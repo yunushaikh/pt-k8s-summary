@@ -1,0 +1,35 @@
+<script>(function(){
+  var bar=document.querySelector(".report-tab-bar");
+  if(!bar)return;
+  var btns=bar.querySelectorAll(".report-tab-btn");
+  var panels=document.querySelectorAll(".report-tab-panel");
+  function activate(tab){
+    btns.forEach(function(b){
+      var on=b.getAttribute("data-tab")===tab;
+      b.setAttribute("aria-selected", on?"true":"false");
+    });
+    panels.forEach(function(p){
+      var on=p.getAttribute("data-tab-panel")===tab;
+      if(on) p.removeAttribute("hidden"); else p.setAttribute("hidden","");
+    });
+  }
+  btns.forEach(function(b){
+    b.addEventListener("click", function(){ activate(b.getAttribute("data-tab")); });
+  });
+  function tabFromHash(){
+    var h=(location.hash||"").replace(/^#/,"");
+    if(h==="tab-pxc"||h==="pxc-pod-logs") return "pxc";
+    if(h==="tab-ps"||h==="ps-pod-logs") return "ps";
+    if(h==="tab-k8s"||h==="report-nodes-coll"||h==="dump-events") return "k8s";
+    return "";
+  }
+  var fromHash=tabFromHash();
+  if(fromHash){
+    var btn=bar.querySelector('[data-tab="'+fromHash+'"]');
+    if(btn) activate(fromHash);
+  }
+  window.addEventListener("hashchange", function(){
+    var t=tabFromHash();
+    if(t) activate(t);
+  });
+})();</script>

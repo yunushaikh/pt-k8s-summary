@@ -20,6 +20,7 @@ type pxcExposeSection struct{}
 
 func (pxcExposeSection) ID() string    { return "pxc-expose" }
 func (pxcExposeSection) Title() string { return "PXC · expose" }
+func (pxcExposeSection) Group() SectionGroup { return GroupPXC }
 
 func (pxcExposeSection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPXCExposeRows(ctx.Root())

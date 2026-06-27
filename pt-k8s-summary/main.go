@@ -144,6 +144,7 @@ func pullKnownFlags(argv []string) []string {
 		"-nodes":        {},
 		"-out":          {},
 		"-galera-since": {},
+		"-layout":       {},
 	}
 	var pulled, rest []string
 	for i := 0; i < len(argv); {
@@ -197,6 +198,7 @@ func main() {
 	outPath := flag.String("out", "", "output HTML path (default: reports/<archive-stem>-summary.html for archives, else reports/report.html)")
 	galeraSince := flag.String("galera-since", "", "if set, pass to pt-galera-log-explainer --since= (RFC3339 / RFC3339Nano, e.g. 2023-01-05T03:24:26.000000Z) to only include events on or after that instant")
 	certifiedImages := flag.Bool("certified-images", true, "fetch Percona certified image list (by spec.crVersion) and compare with images from pods.yaml (uses network)")
+	layoutFlag := flag.String("layout", "classic", "report layout: classic (default linear) or grouped (beta tabs: Kubernetes | PXC | Percona Server)")
 	flag.Usage = usage
 	flag.Parse()
 
@@ -213,13 +215,19 @@ func main() {
 		}
 	}
 
-	if err := runMain(args, *dumpPath, *nodesPath, *outPath, *galeraSince, *certifiedImages); err != nil {
+	layout := strings.TrimSpace(*layoutFlag)
+	if layout != "classic" && layout != "grouped" {
+		fmt.Fprintf(os.Stderr, "invalid -layout %q (use classic or grouped)\n", layout)
+		os.Exit(2)
+	}
+
+	if err := runMain(args, *dumpPath, *nodesPath, *outPath, *galeraSince, *certifiedImages, layout); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, certifiedImages bool) error {
+func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, certifiedImages bool, layout string) error {
 	gs, err := normalizeGaleraSince(galeraSince)
 	if err != nil {
 		return err
@@ -426,8 +434,20 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 
 	extraSections := collector.GatherSections(dumpCtx)
+	sectionsByGroup := collector.GatherSectionsByGroup(dumpCtx)
 
-	tmpl, err := template.New("report").Parse(htmlTemplate)
+	hasPXCCore := len(pxcRows) > 0 || len(backupRows) > 0
+	hasPSCore := len(psRows) > 0 || len(psBackupRows) > 0
+	hasPXCTab := hasPXCCore || len(sectionsByGroup[collector.GroupPXC]) > 0 || (hasPodLogs && !hasPSCore)
+	hasPSTab := hasPSCore || len(sectionsByGroup[collector.GroupPS]) > 0 || (hasPSPodLogs && !hasPXCCore)
+	defaultTab := "k8s"
+	if hasPSTab && !hasPXCTab {
+		defaultTab = "ps"
+	} else if hasPXCTab && !hasPSTab {
+		defaultTab = "pxc"
+	}
+
+	tmpl, err := template.New("report").Parse(reportTemplateSource(layout))
 	if err != nil {
 		return fmt.Errorf("parse template: %w", err)
 	}
@@ -439,65 +459,81 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	defer outF.Close()
 
 	execData := struct {
-		Proc            processingReport
-		GeneratedAt     string
-		ToolVersion     string
-		NodeCount       int
-		Nodes           []nodeRowTmpl
-		PXCRows         []jpreport.PXCRowTmpl
-		PXCEmpty        bool
-		PXCMeta         string
-		PXCMainColspan  int
-		ShowHAProxyCol  bool
-		ShowProxySQLCol bool
-		BackupEmpty     bool
-		BackupMeta      string
-		BackupRows      []jpreport.BackupRowTmpl
-		ExtraSections   []collector.Section
-		HasPodLogs      bool
-		PodLogsHTML     htempl.HTML
-		HasPSPodLogs    bool
-		PSPodLogsHTML   htempl.HTML
-		PSEmpty         bool
-		PSMeta          string
-		PSMainColspan   int
-		PSRows          []jpreport.PSRowTmpl
-		ShowPSHAProxyCol  bool
-		ShowPSRouterCol   bool
+		Proc                  processingReport
+		PageTitle             string
+		Layout                string
+		DefaultTab            string
+		HasPXCTab             bool
+		HasPSTab              bool
+		GeneratedAt           string
+		ToolVersion           string
+		NodeCount             int
+		Nodes                 []nodeRowTmpl
+		PXCRows               []jpreport.PXCRowTmpl
+		PXCEmpty              bool
+		PXCMeta               string
+		PXCMainColspan        int
+		ShowHAProxyCol        bool
+		ShowProxySQLCol       bool
+		BackupEmpty           bool
+		BackupMeta            string
+		BackupRows            []jpreport.BackupRowTmpl
+		ExtraSections         []collector.Section
+		CommonExtraSections   []collector.Section
+		PXCExtraSections      []collector.Section
+		PSExtraSections       []collector.Section
+		HasPodLogs            bool
+		PodLogsHTML           htempl.HTML
+		HasPSPodLogs          bool
+		PSPodLogsHTML         htempl.HTML
+		PSEmpty               bool
+		PSMeta                string
+		PSMainColspan         int
+		PSRows                []jpreport.PSRowTmpl
+		ShowPSHAProxyCol      bool
+		ShowPSRouterCol       bool
 		ShowPSOrchestratorCol bool
-		PSBackupEmpty   bool
-		PSBackupMeta    string
-		PSBackupRows    []jpreport.BackupRowTmpl
+		PSBackupEmpty         bool
+		PSBackupMeta          string
+		PSBackupRows          []jpreport.BackupRowTmpl
 	}{
-		Proc:            proc,
-		GeneratedAt:     now.UTC().Format(time.RFC3339),
-		ToolVersion:     version.String(),
-		NodeCount:       len(nodeRows),
-		Nodes:           toTmplNodes(nodeRows),
-		PXCRows:         pxcRows,
-		PXCEmpty:        len(pxcRows) == 0,
-		PXCMeta:         pxcMeta,
-		PXCMainColspan:  8,
-		ShowHAProxyCol:  showHAProxyCol,
-		ShowProxySQLCol: showProxySQLCol,
-		BackupEmpty:     len(backupRows) == 0,
-		BackupMeta:      backupMeta,
-		BackupRows:      backupRows,
-		ExtraSections:   extraSections,
-		HasPodLogs:      hasPodLogs,
-		PodLogsHTML:     podLogHTML,
-		HasPSPodLogs:    hasPSPodLogs,
-		PSPodLogsHTML:   psPodLogHTML,
-		PSEmpty:         len(psRows) == 0,
-		PSMeta:          psMeta,
-		PSMainColspan:   8,
-		PSRows:          psRows,
-		ShowPSHAProxyCol:  showPSHAProxyCol,
-		ShowPSRouterCol:   showPSRouterCol,
+		Proc:                  proc,
+		PageTitle:             reportPageTitle(hasPXCTab, hasPSTab),
+		Layout:                layout,
+		DefaultTab:            defaultTab,
+		HasPXCTab:             hasPXCTab,
+		HasPSTab:              hasPSTab,
+		GeneratedAt:           now.UTC().Format(time.RFC3339),
+		ToolVersion:           version.String(),
+		NodeCount:             len(nodeRows),
+		Nodes:                 toTmplNodes(nodeRows),
+		PXCRows:               pxcRows,
+		PXCEmpty:              len(pxcRows) == 0,
+		PXCMeta:               pxcMeta,
+		PXCMainColspan:        8,
+		ShowHAProxyCol:        showHAProxyCol,
+		ShowProxySQLCol:       showProxySQLCol,
+		BackupEmpty:           len(backupRows) == 0,
+		BackupMeta:            backupMeta,
+		BackupRows:            backupRows,
+		ExtraSections:         extraSections,
+		CommonExtraSections:   sectionsByGroup[collector.GroupCommon],
+		PXCExtraSections:      sectionsByGroup[collector.GroupPXC],
+		PSExtraSections:       sectionsByGroup[collector.GroupPS],
+		HasPodLogs:            hasPodLogs,
+		PodLogsHTML:           podLogHTML,
+		HasPSPodLogs:          hasPSPodLogs,
+		PSPodLogsHTML:         psPodLogHTML,
+		PSEmpty:               len(psRows) == 0,
+		PSMeta:                psMeta,
+		PSMainColspan:         8,
+		PSRows:                psRows,
+		ShowPSHAProxyCol:      showPSHAProxyCol,
+		ShowPSRouterCol:       showPSRouterCol,
 		ShowPSOrchestratorCol: showPSOrchestratorCol,
-		PSBackupEmpty:   len(psBackupRows) == 0,
-		PSBackupMeta:    psBackupMeta,
-		PSBackupRows:    psBackupRows,
+		PSBackupEmpty:         len(psBackupRows) == 0,
+		PSBackupMeta:          psBackupMeta,
+		PSBackupRows:          psBackupRows,
 	}
 
 	if err := tmpl.Execute(outF, execData); err != nil {
@@ -506,6 +542,19 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 
 	printWroteReport(out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount, len(psRows), psFileCount, len(psBackupRows), psBackupFileCount)
 	return nil
+}
+
+func reportPageTitle(hasPXC, hasPS bool) string {
+	switch {
+	case hasPS && !hasPXC:
+		return "Cluster summary · Percona Server for MySQL"
+	case hasPXC && !hasPS:
+		return "Cluster summary · Percona XtraDB Cluster"
+	case hasPXC && hasPS:
+		return "Cluster summary · Kubernetes & Percona"
+	default:
+		return "Kubernetes cluster summary"
+	}
 }
 
 func defaultReportNameFromArchive(archiveAbs string) string {
