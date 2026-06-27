@@ -5,6 +5,13 @@
 //   - Register your collector only in contrib_owner.go or contrib_partner.go so
 //     each person touches a different file; registry.go concatenates both lists.
 //
+// Technology isolation (PXC, PS, future PG/Mongo/MariaDB/MySQL operator):
+//   - One file (or small file group) per operator section, e.g. pxc_certificates_section.go
+//     and ps_certificates_section.go — not a shared section that branches on operator.
+//   - Shared parsing/helpers live in neutral *_common.go files (certificates_common.go).
+//   - Each collector implements Group() so grouped layout routes sections to the right tab.
+//   - CR loaders stay in operator-specific files (ps_cr_load.go, jpreport/pxc.go, …).
+//
 // Example implementation:
 //
 //	type mySection struct{}

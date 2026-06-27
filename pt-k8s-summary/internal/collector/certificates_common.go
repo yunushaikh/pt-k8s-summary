@@ -3,33 +3,23 @@ package collector
 import (
 	"fmt"
 	"html"
-	"html/template"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
-
-	"pt-k8s-summary/internal/dumpctx"
 )
 
-// certificatesSection parses OpenSSL text dumps from PXC TLS collector files under
-// &lt;namespace&gt;/&lt;cluster-name&gt;-{ca-cert,ssl,ssl-internal} in the debug collector output.
-type certificatesSection struct{}
-
-func (certificatesSection) ID() string    { return "pxc-ssl-certificates" }
-func (certificatesSection) Title() string { return "Certificates" }
-func (certificatesSection) Group() SectionGroup { return GroupPXC }
-
-func (certificatesSection) Collect(ctx dumpctx.Context) (Section, error) {
-	html, err := gatherCertificateSectionHTML(ctx.Root())
-	if err != nil {
-		return Section{}, err
-	}
-	if html == "" {
-		return Section{}, nil
-	}
-	return Section{HTML: template.HTML(html)}, nil
+type internalCertEntry struct {
+	Namespace   string
+	ClusterName string
+	DumpFile    string
+	Component   string
+	Issuer      string
+	NotBefore   string
+	NotAfter    string
+	Skip        bool
+	SkipReason  string
 }
 
 var (
@@ -39,19 +29,6 @@ var (
 	opensslEnd    = regexp.MustCompile(`(?m)Not After\s*:\s*(.+)$`)
 )
 
-type internalCertEntry struct {
-	Namespace   string
-	ClusterName string
-	DumpFile    string // rel path, e.g. pxc-demo/pxc-db-ssl-internal
-	Component   string // ca.crt, tls.crt
-	Issuer      string
-	NotBefore   string
-	NotAfter    string
-	Skip        bool
-	SkipReason  string
-}
-
-// sslCertDumpSuffixes lists collector TLS dump filename suffixes (longest first).
 var sslCertDumpSuffixes = []string{"-ssl-internal", "-ca-cert", "-ssl"}
 
 func isSSLCertDumpFile(name string) bool {
@@ -68,8 +45,6 @@ func clusterNameFromSSLDumpFile(name string) (string, bool) {
 	return "", false
 }
 
-// findSSLCertDumpFiles walks the dump and returns regular files whose names end with
-// -ca-cert, -ssl, or -ssl-internal (e.g. stg1-ssl-internal under a namespace folder).
 func findSSLCertDumpFiles(dumpRoot string) ([]string, error) {
 	var paths []string
 	err := filepath.Walk(dumpRoot, func(path string, info os.FileInfo, err error) error {
@@ -102,14 +77,12 @@ func isOpenSSLFileHeader(s string) bool {
 	return reFileHeader.MatchString(s)
 }
 
-// parseOpenSSLTextCerts splits text like `openssl x509 -in ... -text` for multiple files concatenated
-// (filename on its own line, then Certificate: ...).
 func parseOpenSSLTextCerts(dump []byte) []struct {
 	Component, Issuer, NotBefore, NotAfter, SkipNote string
 } {
 	text := string(dump)
 	lines := strings.Split(text, "\n")
-	var blocks [][2]string // component name, block body
+	var blocks [][2]string
 	var curName string
 	var blockBuf strings.Builder
 	flush := func() {
@@ -179,27 +152,24 @@ func parseOpenSSLTextCerts(dump []byte) []struct {
 	return out
 }
 
-func gatherCertificateSectionHTML(dumpRoot string) (string, error) {
+// gatherCertEntriesForClusterKeys returns TLS dump rows for clusters in clusterKeys
+// (keys are namespace + "\x00" + cluster CR name).
+func gatherCertEntriesForClusterKeys(dumpRoot string, clusterKeys map[string]struct{}) ([]internalCertEntry, error) {
+	if len(clusterKeys) == 0 {
+		return nil, nil
+	}
 	files, err := findSSLCertDumpFiles(dumpRoot)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(files) == 0 {
-		return "", nil
-	}
-	psClusters, err := loadPSClusters(dumpRoot)
-	if err != nil {
-		return "", err
-	}
-	psClusterKeys := make(map[string]struct{}, len(psClusters))
-	for _, c := range psClusters {
-		psClusterKeys[c.Namespace+"\x00"+c.Name] = struct{}{}
+		return nil, nil
 	}
 	var all []internalCertEntry
 	for _, fpath := range files {
 		data, err := os.ReadFile(fpath)
 		if err != nil {
-			return "", fmt.Errorf("read %s: %w", fpath, err)
+			return nil, fmt.Errorf("read %s: %w", fpath, err)
 		}
 		rel, err := filepath.Rel(dumpRoot, fpath)
 		if err != nil {
@@ -207,18 +177,15 @@ func gatherCertificateSectionHTML(dumpRoot string) (string, error) {
 		}
 		rel = filepath.ToSlash(rel)
 		parts := strings.Split(rel, "/")
-		var ns, clusterName string
+		ns := "—"
 		if len(parts) >= 2 {
 			ns = parts[0]
-		} else {
-			ns = "—"
 		}
 		base := filepath.Base(fpath)
-		clusterName, _ = clusterNameFromSSLDumpFile(base)
-		if _, isPS := psClusterKeys[ns+"\x00"+clusterName]; isPS {
+		clusterName, _ := clusterNameFromSSLDumpFile(base)
+		if _, ok := clusterKeys[ns+"\x00"+clusterName]; !ok {
 			continue
 		}
-
 		entries := parseOpenSSLTextCerts(data)
 		for _, e := range entries {
 			row := internalCertEntry{
@@ -238,23 +205,25 @@ func gatherCertificateSectionHTML(dumpRoot string) (string, error) {
 		}
 	}
 	if len(all) == 0 {
-		return "", nil
+		return nil, nil
 	}
-	return renderInternalCertsTable(all), nil
+	return all, nil
 }
 
-func renderInternalCertsTable(rows []internalCertEntry) string {
+func renderCertsTable(sectionID, noteHTML string, rows []internalCertEntry) string {
 	var b strings.Builder
 	esc := html.EscapeString
-	b.WriteString(`<style>
-#pxc-ssl-certificates .pxc-cert-note { font-size: 0.72rem; color: #64748b; margin: 0 0 0.75rem 0; line-height: 1.45; }
-#pxc-ssl-certificates .pxc-cert-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; table-layout: fixed; }
-#pxc-ssl-certificates .pxc-cert-table th { text-align: left; padding: 0.4rem 0.5rem; background: #f1f5f9; border: 1px solid #e2e8f0; font-weight: 650; color: #334155; }
-#pxc-ssl-certificates .pxc-cert-table td { padding: 0.4rem 0.5rem; border: 1px solid #e2e8f0; vertical-align: top; word-break: break-word; }
-#pxc-ssl-certificates .pxc-cert-table td.pxc-cert-mono { font-family: ui-monospace, Menlo, monospace; font-size: 0.7rem; }
-#pxc-ssl-certificates .pxc-cert-skip, #pxc-ssl-certificates span.pxc-cert-skip { font-size: 0.7rem; color: #94a3b8; font-style: italic; }
-</style>`)
-	b.WriteString(`<p class="pxc-cert-note">PXC / Galera TLS material from collector files <code>&lt;namespace&gt;/&lt;cluster-name&gt;-ca-cert</code>, <code>…-ssl</code>, and <code>…-ssl-internal</code> (whichever are present in the dump). Each file contains OpenSSL <code>x509 -text</code> output. Each row is one embedded certificate (<code>ca.crt</code>, <code>tls.crt</code>, …) with <strong>issuer</strong>, start date (<strong>Not Before</strong>), and expiry (<strong>Not After</strong>).</p>`)
+	b.WriteString(`<style>`)
+	fmt.Fprintf(&b, `#%s .pxc-cert-note { font-size: 0.72rem; color: #64748b; margin: 0 0 0.75rem 0; line-height: 1.45; }`, sectionID)
+	fmt.Fprintf(&b, `#%s .pxc-cert-table { width: 100%%; border-collapse: collapse; font-size: 0.75rem; table-layout: fixed; }`, sectionID)
+	fmt.Fprintf(&b, `#%s .pxc-cert-table th { text-align: left; padding: 0.4rem 0.5rem; background: #f1f5f9; border: 1px solid #e2e8f0; font-weight: 650; color: #334155; }`, sectionID)
+	fmt.Fprintf(&b, `#%s .pxc-cert-table td { padding: 0.4rem 0.5rem; border: 1px solid #e2e8f0; vertical-align: top; word-break: break-word; }`, sectionID)
+	fmt.Fprintf(&b, `#%s .pxc-cert-table td.pxc-cert-mono { font-family: ui-monospace, Menlo, monospace; font-size: 0.7rem; }`, sectionID)
+	fmt.Fprintf(&b, `#%s .pxc-cert-skip, #%s span.pxc-cert-skip { font-size: 0.7rem; color: #94a3b8; font-style: italic; }`, sectionID, sectionID)
+	b.WriteString(`</style>`)
+	b.WriteString(`<p class="pxc-cert-note">`)
+	b.WriteString(noteHTML)
+	b.WriteString(`</p>`)
 	b.WriteString(`<table class="pxc-cert-table"><thead><tr>`)
 	b.WriteString(`<th scope="col">Namespace</th><th scope="col">Cluster</th><th scope="col">Dump file</th><th scope="col">cert</th>`)
 	b.WriteString(`<th scope="col">Issuer</th><th scope="col">Start (Not Before)</th><th scope="col">Expiry (Not After)</th><th scope="col">Note</th>`)
