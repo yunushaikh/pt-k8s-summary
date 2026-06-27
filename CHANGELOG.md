@@ -13,11 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Grouped report layout (beta):** `-layout grouped` reorganizes the HTML report into technology tabs — **Kubernetes** | **Percona XtraDB Cluster** | **Percona Server for MySQL**. Classic linear layout remains the default (`-layout classic`). Empty operator tabs are hidden on single-technology dumps.
 - **Section grouping:** collector sections tagged by technology (`common`, `pxc`, `ps`); PS extra sections (topology, status, backup schedules, storages, upgrade, sidecar/toolkit, PVC sizing) now appear in grouped reports.
+- **Per-technology certificates:** PXC and Percona Server each have their own certificates section (`pxc_certificates_section.go`, `ps_certificates_section.go`) under the matching tab; shared OpenSSL parsing in `certificates_common.go`.
 - **Dynamic page title** reflects which operators are present in the dump.
 
 ### Changed
 
-- PXC certificates collector skips TLS dump files that belong to Percona Server clusters (PS TLS under the PS tab is a follow-up).
+- Certificate dump files are matched to cluster CR names per operator (PXC CRs → PXC tab, PS CRs → PS tab) instead of one combined section.
 
 ### Notes
 
