@@ -21,5 +21,12 @@ func ownerSections() []SectionCollector {
 		psUpdateStrategySection{},
 		psUnsafePauseSection{},
 		psExposeSection{},
+		psBackupScheduleSection{},
+		psStorageSection{},
+		psUpgradeSection{},
+		psSidecarToolkitSection{},
+		psPVCSizingSection{},
+		psStatusSection{},
+		psTopologySection{},
 	}
 }

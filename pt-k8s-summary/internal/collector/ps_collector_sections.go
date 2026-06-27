@@ -25,6 +25,7 @@ type psHelmPMMSection struct{}
 
 func (psHelmPMMSection) ID() string    { return "ps-helm-pmm" }
 func (psHelmPMMSection) Title() string { return "Percona Server · Helm & PMM" }
+func (psHelmPMMSection) Group() SectionGroup { return GroupPS }
 
 func (psHelmPMMSection) Collect(ctx dumpctx.Context) (Section, error) {
 	pairs, err := gatherPSHelmPMMPairs(ctx.Root())
@@ -103,6 +104,7 @@ type psPITRSection struct{}
 
 func (psPITRSection) ID() string    { return "ps-pitr" }
 func (psPITRSection) Title() string { return "Percona Server · PITR & backup" }
+func (psPITRSection) Group() SectionGroup { return GroupPS }
 
 func (psPITRSection) Collect(ctx dumpctx.Context) (Section, error) {
 	clusters, err := loadPSClusters(ctx.Root())
@@ -310,6 +312,7 @@ type psUpdateStrategySection struct{}
 
 func (psUpdateStrategySection) ID() string    { return "ps-update-strategy" }
 func (psUpdateStrategySection) Title() string { return "Percona Server · updateStrategy" }
+func (psUpdateStrategySection) Group() SectionGroup { return GroupPS }
 
 func (psUpdateStrategySection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPSUpdateStrategyRows(ctx.Root())
@@ -476,6 +479,7 @@ type psUnsafePauseSection struct{}
 
 func (psUnsafePauseSection) ID() string    { return "ps-unsafe-flags-pause" }
 func (psUnsafePauseSection) Title() string { return "" }
+func (psUnsafePauseSection) Group() SectionGroup { return GroupPS }
 
 func (psUnsafePauseSection) Collect(ctx dumpctx.Context) (Section, error) {
 	unsafeRows, err := gatherPSUnsafeFlagRows(ctx.Root())
@@ -503,6 +507,7 @@ type psExposeSection struct{}
 
 func (psExposeSection) ID() string    { return "ps-expose" }
 func (psExposeSection) Title() string { return "Percona Server · expose" }
+func (psExposeSection) Group() SectionGroup { return GroupPS }
 
 func (psExposeSection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPSExposeRows(ctx.Root())

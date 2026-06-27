@@ -14,6 +14,7 @@ type pxcUnsafePauseRowSection struct{}
 
 func (pxcUnsafePauseRowSection) ID() string    { return "pxc-unsafe-flags-pause" }
 func (pxcUnsafePauseRowSection) Title() string { return "" }
+func (pxcUnsafePauseRowSection) Group() SectionGroup { return GroupPXC }
 
 func (pxcUnsafePauseRowSection) Collect(ctx dumpctx.Context) (Section, error) {
 	unsafeRows, err := gatherUnsafeFlagRows(ctx.Root())

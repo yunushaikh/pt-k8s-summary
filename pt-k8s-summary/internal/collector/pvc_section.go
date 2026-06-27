@@ -26,6 +26,7 @@ type pvcInventorySection struct{}
 
 func (pvcInventorySection) ID() string    { return "pvc-storage-atlas" }
 func (pvcInventorySection) Title() string { return "Persistent volume claims" }
+func (pvcInventorySection) Group() SectionGroup { return GroupCommon }
 
 func (pvcInventorySection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPVCRows(ctx.Root())

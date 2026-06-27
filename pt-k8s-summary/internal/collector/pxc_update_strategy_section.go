@@ -21,6 +21,7 @@ type pxcUpdateStrategySection struct{}
 
 func (pxcUpdateStrategySection) ID() string    { return "pxc-update-strategy" }
 func (pxcUpdateStrategySection) Title() string { return "PXC · updateStrategy" }
+func (pxcUpdateStrategySection) Group() SectionGroup { return GroupPXC }
 
 func (pxcUpdateStrategySection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPXCUpdateStrategyRows(ctx.Root())

@@ -40,6 +40,7 @@ type pxcHelmPMMPairSection struct{}
 
 func (pxcHelmPMMPairSection) ID() string    { return "pxc-helm-pmm" }
 func (pxcHelmPMMPairSection) Title() string { return "PXC · Helm & PMM" }
+func (pxcHelmPMMPairSection) Group() SectionGroup { return GroupPXC }
 
 func (pxcHelmPMMPairSection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPXCHelmPMMPairs(ctx.Root())

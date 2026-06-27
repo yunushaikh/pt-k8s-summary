@@ -21,6 +21,7 @@ type pxcReplicationChannelsSection struct{}
 
 func (pxcReplicationChannelsSection) ID() string    { return "pxc-repl-channels" }
 func (pxcReplicationChannelsSection) Title() string { return "PXC · replication channels" }
+func (pxcReplicationChannelsSection) Group() SectionGroup { return GroupPXC }
 
 func (pxcReplicationChannelsSection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPXCReplicationRows(ctx.Root())

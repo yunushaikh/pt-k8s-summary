@@ -19,6 +19,7 @@ type certificatesSection struct{}
 
 func (certificatesSection) ID() string    { return "pxc-ssl-certificates" }
 func (certificatesSection) Title() string { return "Certificates" }
+func (certificatesSection) Group() SectionGroup { return GroupPXC }
 
 func (certificatesSection) Collect(ctx dumpctx.Context) (Section, error) {
 	html, err := gatherCertificateSectionHTML(ctx.Root())
@@ -186,6 +187,14 @@ func gatherCertificateSectionHTML(dumpRoot string) (string, error) {
 	if len(files) == 0 {
 		return "", nil
 	}
+	psClusters, err := loadPSClusters(dumpRoot)
+	if err != nil {
+		return "", err
+	}
+	psClusterKeys := make(map[string]struct{}, len(psClusters))
+	for _, c := range psClusters {
+		psClusterKeys[c.Namespace+"\x00"+c.Name] = struct{}{}
+	}
 	var all []internalCertEntry
 	for _, fpath := range files {
 		data, err := os.ReadFile(fpath)
@@ -206,6 +215,9 @@ func gatherCertificateSectionHTML(dumpRoot string) (string, error) {
 		}
 		base := filepath.Base(fpath)
 		clusterName, _ = clusterNameFromSSLDumpFile(base)
+		if _, isPS := psClusterKeys[ns+"\x00"+clusterName]; isPS {
+			continue
+		}
 
 		entries := parseOpenSSLTextCerts(data)
 		for _, e := range entries {

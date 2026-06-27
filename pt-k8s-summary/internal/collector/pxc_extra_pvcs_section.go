@@ -20,6 +20,7 @@ type pxcExtraPVCsSection struct{}
 
 func (pxcExtraPVCsSection) ID() string    { return "pxc-extra-pvcs" }
 func (pxcExtraPVCsSection) Title() string { return "PXC · extraPVCs" }
+func (pxcExtraPVCsSection) Group() SectionGroup { return GroupPXC }
 
 func (pxcExtraPVCsSection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPXCExtraPVCRows(ctx.Root())

@@ -24,6 +24,7 @@ type eventsDumpSection struct{}
 
 func (eventsDumpSection) ID() string    { return "dump-events" }
 func (eventsDumpSection) Title() string { return "Cluster events" }
+func (eventsDumpSection) Group() SectionGroup { return GroupCommon }
 
 func (eventsDumpSection) Collect(ctx dumpctx.Context) (Section, error) {
 	h, err := gatherEventsSectionHTML(ctx.Root())

@@ -1,0 +1,46 @@
+<style>
+.report-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 1.25rem 0 0;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.report-tab-btn {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.report-tab-btn:hover { background: var(--row-alt); color: var(--ink-soft); }
+.report-tab-btn[aria-selected="true"] {
+  background: linear-gradient(120deg, rgba(13, 148, 136, 0.12) 0%, #fff 55%);
+  border-color: #99f6e4;
+  color: var(--ink);
+}
+.report-tab-panel { margin-top: 1.15rem; }
+.report-tab-panel[hidden] { display: none !important; }
+@media print {
+  .report-tab-bar { position: static; }
+  .report-tab-panel[hidden] { display: block !important; }
+}
+</style>
+<nav class="report-tab-bar" role="tablist" aria-label="Report technology sections">
+<button type="button" class="report-tab-btn" role="tab" id="tab-btn-k8s" data-tab="k8s" aria-controls="panel-k8s" aria-selected="{{ if eq .DefaultTab "k8s" }}true{{ else }}false{{ end }}">Kubernetes</button>
+{{ if .HasPXCTab }}<button type="button" class="report-tab-btn" role="tab" id="tab-btn-pxc" data-tab="pxc" aria-controls="panel-pxc" aria-selected="{{ if eq .DefaultTab "pxc" }}true{{ else }}false{{ end }}">Percona XtraDB Cluster</button>{{ end }}
+{{ if .HasPSTab }}<button type="button" class="report-tab-btn" role="tab" id="tab-btn-ps" data-tab="ps" aria-controls="panel-ps" aria-selected="{{ if eq .DefaultTab "ps" }}true{{ else }}false{{ end }}">Percona Server for MySQL</button>{{ end }}
+</nav>
+<div id="panel-k8s" class="report-tab-panel report-section" role="tabpanel" aria-labelledby="tab-btn-k8s" data-tab-panel="k8s"{{ if ne .DefaultTab "k8s" }} hidden{{ end }}>

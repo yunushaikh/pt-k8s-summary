@@ -1,0 +1,13 @@
+{{ if .HasPSTab }}
+<div id="panel-ps" class="report-tab-panel report-section" role="tabpanel" aria-labelledby="tab-btn-ps" data-tab-panel="ps"{{ if ne $.DefaultTab "ps" }} hidden{{ end }}>
+{{ if .HasPSPodLogs }}
+<section class="report-section pod-logs-top" id="ps-pod-logs">
+<h2 class="pxc-pod-logs-h2">Percona Server · operator &amp; pod logs</h2>
+{{ .PSPodLogsHTML }}
+</section>
+{{ end }}
+{{ template "groupedPSClusters" . }}
+{{ template "groupedPSBackups" . }}
+{{ template "groupedExtraSections" .PSExtraSections }}
+</div>
+{{ end }}

@@ -20,6 +20,7 @@ type pitrPXCSection struct{}
 
 func (pitrPXCSection) ID() string    { return "pxc-pitr" }
 func (pitrPXCSection) Title() string { return "PITR" }
+func (pitrPXCSection) Group() SectionGroup { return GroupPXC }
 
 func (pitrPXCSection) Collect(ctx dumpctx.Context) (Section, error) {
 	rows, err := gatherPITRRows(ctx.Root())

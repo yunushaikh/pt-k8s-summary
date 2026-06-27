@@ -1,0 +1,13 @@
+{{ if .HasPXCTab }}
+<div id="panel-pxc" class="report-tab-panel report-section" role="tabpanel" aria-labelledby="tab-btn-pxc" data-tab-panel="pxc"{{ if ne $.DefaultTab "pxc" }} hidden{{ end }}>
+{{ if .HasPodLogs }}
+<section class="report-section pod-logs-top" id="pxc-pod-logs">
+<h2 class="pxc-pod-logs-h2">PXC · operator &amp; pod logs</h2>
+{{ .PodLogsHTML }}
+</section>
+{{ end }}
+{{ template "groupedPXCClusters" . }}
+{{ template "groupedPXCBackups" . }}
+{{ template "groupedExtraSections" .PXCExtraSections }}
+</div>
+{{ end }}
