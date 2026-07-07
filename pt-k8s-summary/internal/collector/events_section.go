@@ -5,13 +5,13 @@ import (
 	"html"
 	"html/template"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"pt-k8s-summary/internal/dumpctx"
+	"pt-k8s-summary/internal/dumpfiles"
 
 	"gopkg.in/yaml.v3"
 )
@@ -77,22 +77,7 @@ type eventDisplayRow struct {
 }
 
 func findEventsYAMLPaths(dumpRoot string) ([]string, error) {
-	ents, err := os.ReadDir(dumpRoot)
-	if err != nil {
-		return nil, err
-	}
-	var out []string
-	for _, e := range ents {
-		if !e.IsDir() {
-			continue
-		}
-		p := filepath.Join(dumpRoot, e.Name(), eventsFileName)
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			out = append(out, p)
-		}
-	}
-	sort.Strings(out)
-	return out, nil
+	return dumpfiles.FindEventsYAMLFiles(dumpRoot)
 }
 
 func eventTimeString(v any) string {

@@ -14,6 +14,7 @@ import (
 
 	"pt-k8s-summary/internal/collector"
 	"pt-k8s-summary/internal/dumpctx"
+	"pt-k8s-summary/internal/dumpfiles"
 	"pt-k8s-summary/internal/jpreport"
 	"pt-k8s-summary/internal/version"
 
@@ -200,12 +201,12 @@ func main() {
 		os.Args = append([]string{os.Args[0]}, pullKnownFlags(os.Args[1:])...)
 	}
 	showVersion := flag.Bool("version", false, "print version and exit")
-	dumpPath := flag.String("dump", "", "path to extracted cluster dump root (recursive PXC search; default nodes: <dump>/nodes.yaml or <dump>/cluster-scope/nodes.yaml)")
-	nodesPath := flag.String("nodes", "", "path to nodes.yaml (default: auto-detect under dump root)")
+	dumpPath := flag.String("dump", "", "path to extracted cluster dump root (auto-detects nodes.yaml and operator YAMLs anywhere under the tree)")
+	nodesPath := flag.String("nodes", "", "path to nodes.yaml (default: auto-detect Node list under dump root)")
 	outPath := flag.String("out", "", "output HTML path (default: reports/<archive-stem>-summary.html for archives, else reports/report.html)")
 	galeraSince := flag.String("galera-since", "", "if set, pass to pt-galera-log-explainer --since= (RFC3339 / RFC3339Nano, e.g. 2023-01-05T03:24:26.000000Z) to only include events on or after that instant")
 	certifiedImages := flag.Bool("certified-images", true, "fetch Percona certified image list (by spec.crVersion) and compare with images from pods.yaml (uses network)")
-	layoutFlag := flag.String("layout", "classic", "report layout: classic (default linear) or grouped (beta tabs: Kubernetes | PXC | Percona Server)")
+	layoutFlag := flag.String("layout", "grouped", "report layout: grouped (default tabs: Kubernetes | PXC | Percona Server) or classic (linear)")
 	flag.Usage = usage
 	flag.Parse()
 
@@ -273,7 +274,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		proc.SourceArchive = archiveAbs
 		base := filepath.Base(dumpAbs)
 		proc.DumpRootDisplay = base + " (top-level directory from the archive)"
-		proc.NodesPathDisplay = filepath.ToSlash(filepath.Join(base, "nodes.yaml"))
+		proc.NodesPathDisplay = "(auto-detected nodes.yaml)"
 		if outFlag != "" {
 			out = outFlag
 		} else {
@@ -312,7 +313,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	} else {
 		var nodesRel string
 		var err error
-		nodesAbs, nodesRel, err = findNodesYAML(dumpAbs)
+		nodesAbs, nodesRel, err = dumpfiles.FindNodesYAML(dumpAbs)
 		if err != nil {
 			return err
 		}
@@ -343,9 +344,11 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		nodeRows = append(nodeRows, buildNodeRow(&list.Items[i], now))
 	}
 
-	if b, err := dumpCtx.ReadRel("errors.txt"); err == nil {
-		proc.HasErrorsFile = true
-		proc.CollectorErrors = string(truncateRunes(b, collectorErrorsMax))
+	if b, _, ok := dumpfiles.FindErrorsTxt(dumpAbs); ok {
+		if data, err := os.ReadFile(b); err == nil {
+			proc.HasErrorsFile = true
+			proc.CollectorErrors = string(truncateRunes(data, collectorErrorsMax))
+		}
 	}
 
 	podsData, err := jpreport.LoadPodLoader(dumpAbs)

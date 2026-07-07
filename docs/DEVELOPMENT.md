@@ -22,7 +22,7 @@ Keep operator-specific code in separate files so a change for one technology doe
 | **Percona Server** | `ps_*_section.go`, `ps_certificates_section.go` | `internal/jpreport/ps.go`, `ps_cr_load.go` |
 | **Future** | `pg_*`, `mongo_*`, … (same pattern) | matching `jpreport/` loaders |
 
-Shared helpers (e.g. OpenSSL cert parsing) live in neutral `*_common.go` files. Each section implements `Group()` for the grouped tab layout.
+Shared helpers (e.g. OpenSSL cert parsing, dump file location) live in neutral `*_common.go` or `internal/dumpfiles/locate.go`. Each section implements `Group()` for the grouped tab layout.
 
 ## Tests
 

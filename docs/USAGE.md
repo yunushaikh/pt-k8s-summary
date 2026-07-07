@@ -45,17 +45,17 @@ pt-k8s-summary -version
 |------|-------------|
 | `-version` | Print version and exit |
 | `-dump` | Path to an extracted cluster dump root |
-| `-nodes` | Path to `nodes.yaml` (default: auto-detect at `<dump>/nodes.yaml` or `<dump>/cluster-scope/nodes.yaml`) |
+| `-nodes` | Path to `nodes.yaml` (default: auto-detect Node list anywhere under the dump) |
 | `-out` | Output HTML path |
 | `-galera-since` | RFC3339 timestamp for pt-galera-log-explainer `--since=` |
 | `-certified-images` | Fetch/compare Percona certified images (default: `true`) |
-| `-layout` | Report layout: `classic` (default, linear sections) or `grouped` (beta: tabbed Kubernetes / PXC / Percona Server) |
+| `-layout` | Report layout: `grouped` (default, tabbed Kubernetes / PXC / Percona Server) or `classic` (linear) |
 
 **Positional argument:** cluster dump archive (`.tar.gz` or `.tgz`). Use either the archive **or** `-dump`, not both.
 
-### Grouped layout (beta)
+### Report layout
 
-`-layout grouped` reorganizes the HTML report into tabs:
+**Default (`grouped`):** the HTML report opens with technology tabs:
 
 | Tab | Content |
 |-----|---------|
@@ -63,30 +63,39 @@ pt-k8s-summary -version
 | **Percona XtraDB Cluster** | Shown only when PXC CRs, backups, pod logs, or PXC collector sections exist |
 | **Percona Server for MySQL** | Shown only when PS CRs, backups, pod logs, or PS collector sections exist |
 
-Compare layouts from the same dump:
+**Classic layout:** pass `-layout classic` for the previous single-page linear report.
 
 ```bash
-pt-k8s-summary cluster-dump.tar.gz -out reports/classic.html
-pt-k8s-summary cluster-dump.tar.gz -layout grouped -out reports/grouped.html
+pt-k8s-summary cluster-dump.tar.gz -layout classic -out reports/classic.html
 ```
 
-Classic layout remains the default until you decide to adopt grouped permanently.
+### Collector dump layouts
+
+`pt-k8s-debug-collector` output paths vary by version. The tool **searches the full dump tree** for:
+
+| File | How it is found |
+|------|-----------------|
+| `nodes.yaml` | Any path named `nodes.yaml` whose YAML contains Kubernetes `Node` items (ignores e.g. `csinodes.yaml`) |
+| `events.yaml` | Any path named `events.yaml` with `Event` items |
+| `errors.txt` | Shallowest `errors.txt` under the dump root |
+| Operator list YAML | Preferred collector filenames, then kind-based fallback (`internal/dumpfiles`) |
+
+Legacy dumps (`nodes.yaml` at dump root) and newer layouts (`cluster-scope/nodes.yaml`) both work without extra flags.
 
 ## Flag order
 
-Flags must appear **before** the archive path:
+Flags may appear before **or after** the archive path for `-out`, `-layout`, `-dump`, `-nodes`, and `-galera-since`:
 
 ```bash
-# Good
+# All fine
 pt-k8s-summary -certified-images=false /path/to/dump.tar.gz
-
-# Bad — flag after archive is ignored
-pt-k8s-summary /path/to/dump.tar.gz -certified-images=false
+pt-k8s-summary /path/to/dump.tar.gz --layout classic
+pt-k8s-summary dump.tar.gz -out reports/my.html
 ```
 
 ## Requirements
 
-- **Input:** cluster dump from [pt-k8s-debug-collector](https://github.com/percona/k8spxc-debug-collector) (tarball or extracted tree with `nodes.yaml` at the dump root or under `cluster-scope/`, PXC YAML, `pods.yaml`, pod folders, etc.)
+- **Input:** cluster dump from [pt-k8s-debug-collector](https://github.com/percona/k8spxc-debug-collector) (tarball or extracted tree; key YAML files are auto-discovered under the dump root)
 - **Network (optional):** only when `-certified-images=true` (default)
 - **Optional:** [Percona Toolkit](https://docs.percona.com/percona-toolkit/) with `pt-galera-log-explainer` on `PATH` for the Galera timeline section
 
