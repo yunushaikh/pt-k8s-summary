@@ -88,26 +88,6 @@ func extractClusterArchive(archivePath, destDir string) (dumpRoot string, err er
 	return inferDumpRoot(destDir)
 }
 
-// nodesYAMLRelPaths lists nodes.yaml locations relative to the dump root.
-// Older pt-k8s-debug-collector writes nodes.yaml at the root; newer layouts use cluster-scope/.
-var nodesYAMLRelPaths = []string{
-	"nodes.yaml",
-	"cluster-scope/nodes.yaml",
-}
-
-// findNodesYAML returns the absolute path and dump-relative path to nodes.yaml.
-func findNodesYAML(dumpRoot string) (abs, rel string, err error) {
-	dumpRoot = filepath.Clean(dumpRoot)
-	for _, candidate := range nodesYAMLRelPaths {
-		p := filepath.Join(dumpRoot, filepath.FromSlash(candidate))
-		st, statErr := os.Stat(p)
-		if statErr == nil && !st.IsDir() {
-			return p, candidate, nil
-		}
-	}
-	return "", "", fmt.Errorf("nodes.yaml not found under %q (looked for %s)", dumpRoot, strings.Join(nodesYAMLRelPaths, ", "))
-}
-
 // clearPathForRegularFile removes a path that exists only as an *empty* directory, so
 // a regular file can be created at the same name. Non-empty directory → error.
 func clearPathForRegularFile(target string) error {

@@ -7,23 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.0-beta.1] - 2026-06-27
+## [0.7.0] - 2026-07-07
 
 ### Added
 
-- **Grouped report layout (beta):** `-layout grouped` reorganizes the HTML report into technology tabs — **Kubernetes** | **Percona XtraDB Cluster** | **Percona Server for MySQL**. Classic linear layout remains the default (`-layout classic`). Empty operator tabs are hidden on single-technology dumps.
-- **Section grouping:** collector sections tagged by technology (`common`, `pxc`, `ps`); PS extra sections (topology, status, backup schedules, storages, upgrade, sidecar/toolkit, PVC sizing) now appear in grouped reports.
-- **Per-technology certificates:** PXC and Percona Server each have their own certificates section (`pxc_certificates_section.go`, `ps_certificates_section.go`) under the matching tab; shared OpenSSL parsing in `certificates_common.go`.
+- **Grouped report layout (default):** reports open with technology tabs — **Kubernetes** | **Percona XtraDB Cluster** | **Percona Server for MySQL**. Use `-layout classic` for the previous linear layout. Empty operator tabs are hidden on single-technology dumps.
+- **Section grouping:** collector sections tagged by technology (`common`, `pxc`, `ps`); PS extra sections (topology, status, backup schedules, storages, upgrade, sidecar/toolkit, PVC sizing).
+- **Per-technology certificates:** separate PXC and Percona Server certificate sections under the matching tab (`pxc_certificates_section.go`, `ps_certificates_section.go`).
+- **Dynamic dump file discovery:** `nodes.yaml`, `errors.txt`, and `events.yaml` are found anywhere under the dump tree (legacy dump-root paths and newer `cluster-scope/` layouts). Node and Event files are validated by Kubernetes kind, so similarly named files (e.g. `csinodes.yaml`) are ignored.
 - **Dynamic page title** reflects which operators are present in the dump.
 
 ### Changed
 
-- **nodes.yaml discovery:** newer collector dumps place cluster-scoped resources under `cluster-scope/`; the tool now finds `cluster-scope/nodes.yaml` as well as the legacy dump-root `nodes.yaml`.
-- Certificate dump files are matched to cluster CR names per operator (PXC CRs → PXC tab, PS CRs → PS tab) instead of one combined section.
-
-### Notes
-
-- This is a **pre-release beta** for the grouped layout. Feedback welcome before promoting `-layout grouped` to default.
+- **Default layout** is now `grouped` (was `classic` in v0.6.x).
+- Operator list YAML discovery (`internal/dumpfiles`) already walks the full dump tree; nodes/events/errors now follow the same pattern.
 
 ## [0.6.0] - 2026-06-23
 
