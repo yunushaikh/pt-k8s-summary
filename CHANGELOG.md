@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **nodes.yaml discovery:** newer collector dumps place cluster-scoped resources under `cluster-scope/`; the tool now finds `cluster-scope/nodes.yaml` as well as the legacy dump-root `nodes.yaml`.
 - Certificate dump files are matched to cluster CR names per operator (PXC CRs → PXC tab, PS CRs → PS tab) instead of one combined section.
 
 ### Notes

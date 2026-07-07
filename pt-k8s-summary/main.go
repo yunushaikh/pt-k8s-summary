@@ -133,11 +133,12 @@ var quantityRe = regexp.MustCompile(`^([0-9]*\.?[0-9]+)([A-Za-z]*)$`)
 
 const collectorErrorsMax = 256 * 1024
 
-// pullKnownFlags moves -dump, -nodes, and -out (with their values) before any
+// pullKnownFlags moves -dump, -nodes, -out, -layout, etc. (with their values) before any
 // positional archive path so flag.Parse accepts either:
 //
 //	pt-k8s-summary -out report.html dump.tar.gz
 //	pt-k8s-summary dump.tar.gz -out report.html
+//	pt-k8s-summary dump.tar.gz --layout grouped
 func pullKnownFlags(argv []string) []string {
 	known := map[string]struct{}{
 		"-dump":         {},
@@ -146,15 +147,21 @@ func pullKnownFlags(argv []string) []string {
 		"-galera-since": {},
 		"-layout":       {},
 	}
+	normalize := func(a string) string {
+		if strings.HasPrefix(a, "--") && len(a) > 2 {
+			return "-" + a[2:]
+		}
+		return a
+	}
 	var pulled, rest []string
 	for i := 0; i < len(argv); {
-		a := argv[i]
+		a := normalize(argv[i])
 		if _, ok := known[a]; ok && i+1 < len(argv) {
 			pulled = append(pulled, a, argv[i+1])
 			i += 2
 			continue
 		}
-		rest = append(rest, a)
+		rest = append(rest, argv[i])
 		i++
 	}
 	return append(pulled, rest...)
@@ -193,8 +200,8 @@ func main() {
 		os.Args = append([]string{os.Args[0]}, pullKnownFlags(os.Args[1:])...)
 	}
 	showVersion := flag.Bool("version", false, "print version and exit")
-	dumpPath := flag.String("dump", "", "path to extracted cluster dump root (recursive PXC search; default nodes: <dump>/nodes.yaml)")
-	nodesPath := flag.String("nodes", "", "path to nodes.yaml (default: <dump>/nodes.yaml when -dump is set)")
+	dumpPath := flag.String("dump", "", "path to extracted cluster dump root (recursive PXC search; default nodes: <dump>/nodes.yaml or <dump>/cluster-scope/nodes.yaml)")
+	nodesPath := flag.String("nodes", "", "path to nodes.yaml (default: auto-detect under dump root)")
 	outPath := flag.String("out", "", "output HTML path (default: reports/<archive-stem>-summary.html for archives, else reports/report.html)")
 	galeraSince := flag.String("galera-since", "", "if set, pass to pt-galera-log-explainer --since= (RFC3339 / RFC3339Nano, e.g. 2023-01-05T03:24:26.000000Z) to only include events on or after that instant")
 	certifiedImages := flag.Bool("certified-images", true, "fetch Percona certified image list (by spec.crVersion) and compare with images from pods.yaml (uses network)")
@@ -303,7 +310,15 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 			return fmt.Errorf("nodes path: %w", err)
 		}
 	} else {
-		nodesAbs = filepath.Join(dumpAbs, "nodes.yaml")
+		var nodesRel string
+		var err error
+		nodesAbs, nodesRel, err = findNodesYAML(dumpAbs)
+		if err != nil {
+			return err
+		}
+		if proc.SourceArchive != "" && !strings.HasPrefix(proc.SourceArchive, "(directory mode") {
+			proc.NodesPathDisplay = filepath.ToSlash(filepath.Join(filepath.Base(dumpAbs), nodesRel))
+		}
 	}
 	if proc.NodesPathDisplay == "" {
 		proc.NodesPathDisplay = nodesAbs

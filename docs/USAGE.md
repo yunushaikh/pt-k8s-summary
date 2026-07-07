@@ -45,7 +45,7 @@ pt-k8s-summary -version
 |------|-------------|
 | `-version` | Print version and exit |
 | `-dump` | Path to an extracted cluster dump root |
-| `-nodes` | Path to `nodes.yaml` (default: `<dump>/nodes.yaml`) |
+| `-nodes` | Path to `nodes.yaml` (default: auto-detect at `<dump>/nodes.yaml` or `<dump>/cluster-scope/nodes.yaml`) |
 | `-out` | Output HTML path |
 | `-galera-since` | RFC3339 timestamp for pt-galera-log-explainer `--since=` |
 | `-certified-images` | Fetch/compare Percona certified images (default: `true`) |
@@ -86,7 +86,7 @@ pt-k8s-summary /path/to/dump.tar.gz -certified-images=false
 
 ## Requirements
 
-- **Input:** cluster dump from [pt-k8s-debug-collector](https://github.com/percona/k8spxc-debug-collector) (tarball or extracted tree with `nodes.yaml`, PXC YAML, `pods.yaml`, pod folders, etc.)
+- **Input:** cluster dump from [pt-k8s-debug-collector](https://github.com/percona/k8spxc-debug-collector) (tarball or extracted tree with `nodes.yaml` at the dump root or under `cluster-scope/`, PXC YAML, `pods.yaml`, pod folders, etc.)
 - **Network (optional):** only when `-certified-images=true` (default)
 - **Optional:** [Percona Toolkit](https://docs.percona.com/percona-toolkit/) with `pt-galera-log-explainer` on `PATH` for the Galera timeline section
 
