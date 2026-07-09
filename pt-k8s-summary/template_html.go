@@ -11,14 +11,23 @@ var reportPodLogsHTML string
 //go:embed report_nodes.html
 var reportNodesHTML string
 
-//go:embed pxc_backup_section.tmpl
-var pxcBackupHTML string
+//go:embed pxc_backup_classic.tmpl
+var pxcBackupClassicHTML string
 
-//go:embed ps_cluster_section.tmpl
-var psClusterHTML string
+//go:embed pxc_backup_grouped.tmpl
+var pxcBackupGroupedHTML string
 
-//go:embed pg_cluster_section.tmpl
-var pgClusterHTML string
+//go:embed ps_cluster_classic.tmpl
+var psClusterClassicHTML string
+
+//go:embed ps_cluster_grouped.tmpl
+var psClusterGroupedHTML string
+
+//go:embed pg_cluster_classic.tmpl
+var pgClusterClassicHTML string
+
+//go:embed pg_cluster_grouped.tmpl
+var pgClusterGroupedHTML string
 
 //go:embed report_extra.html
 var reportExtraHTML string
@@ -51,10 +60,11 @@ var jpreportModalsHTML string
 var reportTailTmpl string
 
 // htmlTemplate is the classic (linear) report layout.
-var htmlTemplate = reportHeadHTML + reportPodLogsHTML + reportNodesHTML + pxcBackupHTML + psClusterHTML + pgClusterHTML + reportExtraHTML + jpreportModalsHTML + reportTailTmpl
+var htmlTemplate = reportHeadHTML + reportPodLogsHTML + reportNodesHTML + pxcBackupClassicHTML + psClusterClassicHTML + pgClusterClassicHTML + reportExtraHTML + jpreportModalsHTML + reportTailTmpl
 
 // htmlTemplateGrouped is the tabbed layout: Kubernetes | PXC | Percona Server | PostgreSQL.
-var htmlTemplateGrouped = reportHeadHTML + reportGroupedSectionsTmpl + reportGroupedTabsHTML + reportNodesHTML + reportGroupedCommonTmpl + reportGroupedPXCTmpl + reportGroupedPSTmpl + reportGroupedPGTmpl + pxcBackupHTML + psClusterHTML + pgClusterHTML + reportGroupedTabsJSHTML + jpreportModalsHTML + reportTailTmpl
+// Operator grouped defines are embedded separately so classic top-level sections are not rendered twice.
+var htmlTemplateGrouped = reportHeadHTML + reportGroupedSectionsTmpl + pxcBackupGroupedHTML + psClusterGroupedHTML + pgClusterGroupedHTML + reportGroupedTabsHTML + reportNodesHTML + reportGroupedCommonTmpl + reportGroupedPXCTmpl + reportGroupedPSTmpl + reportGroupedPGTmpl + reportGroupedTabsJSHTML + jpreportModalsHTML + reportTailTmpl
 
 func reportTemplateSource(layout string) string {
 	if layout == "grouped" {
