@@ -4,31 +4,54 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.8.1) — use when a tag push run failed or was queued too long"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
+      - name: Resolve ref and version
+        id: meta
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            REF="${{ inputs.tag }}"
+          else
+            REF="${GITHUB_REF_NAME}"
+          fi
+          if [[ ! "$REF" =~ ^v ]]; then
+            echo "Tag must start with v (got: $REF)" >&2
+            exit 1
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "tag=${REF#v}" >> "$GITHUB_OUTPUT"
+          echo "Release ref: $REF (version ${REF#v})"
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.ref }}
 
       - uses: actions/setup-go@v5
         with:
           go-version: "1.21"
           cache-dependency-path: pt-k8s-summary/go.sum
 
-      - name: Resolve version
-        id: ver
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Release version: $TAG"
-
       - name: Build release binaries
         env:
-          VERSION: ${{ steps.ver.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.tag }}
           COMMIT: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -53,7 +76,7 @@ jobs:
 
       - name: Extract CHANGELOG section
         run: |
-          TAG="${{ steps.ver.outputs.tag }}"
+          TAG="${{ steps.meta.outputs.tag }}"
           awk -v ver="$TAG" '
             $0 ~ "^## \\[" ver "\\]" { found=1; next }
             found && /^## \[/ { exit }
@@ -82,6 +105,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.meta.outputs.ref }}
           body_path: release-notes.md
           files: |
             dist/pt-k8s-summary_linux_amd64

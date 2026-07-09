@@ -31,4 +31,6 @@ nohup.out
 *.swp
 *~
 .work
-.cursor/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
