@@ -20,6 +20,7 @@
     var h=(location.hash||"").replace(/^#/,"");
     if(h==="tab-pxc"||h==="pxc-pod-logs") return "pxc";
     if(h==="tab-ps"||h==="ps-pod-logs") return "ps";
+    if(h==="tab-pg"||h==="pg-workload-pod-logs"||h==="pg-operator-pod-logs"||h==="pg-ssl-certificates") return "pg";
     if(h==="tab-k8s"||h==="report-nodes-coll"||h==="dump-events") return "k8s";
     return "";
   }

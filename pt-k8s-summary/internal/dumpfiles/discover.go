@@ -60,6 +60,38 @@ var (
 		},
 		NameContains: []string{"perconaservermysqlrestore"},
 	}
+	PGClusterList = ListTarget{
+		Kind: "PerconaPGCluster",
+		PreferredBasenames: []string{
+			"perconapgclusters.pgv2.percona.com.yaml",
+			"perconapgclusters.yaml",
+		},
+		NameContains: []string{"perconapgcluster"},
+	}
+	PGBackupList = ListTarget{
+		Kind: "PerconaPGBackup",
+		PreferredBasenames: []string{
+			"perconapgbackups.pgv2.percona.com.yaml",
+			"perconapgbackups.yaml",
+		},
+		NameContains: []string{"perconapgbackup"},
+	}
+	PGRestoreList = ListTarget{
+		Kind: "PerconaPGRestore",
+		PreferredBasenames: []string{
+			"perconapgrestores.pgv2.percona.com.yaml",
+			"perconapgrestores.yaml",
+		},
+		NameContains: []string{"perconapgrestore"},
+	}
+	PGUpgradeList = ListTarget{
+		Kind: "PerconaPGUpgrade",
+		PreferredBasenames: []string{
+			"perconapgupgrades.pgv2.percona.com.yaml",
+			"perconapgupgrades.yaml",
+		},
+		NameContains: []string{"perconapgupgrade"},
+	}
 )
 
 // FindListYAMLFiles returns sorted absolute paths. Preferred basenames win; otherwise kind-matched fallbacks.

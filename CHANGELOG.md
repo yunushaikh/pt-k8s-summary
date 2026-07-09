@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-09
+
+### Added
+
+- **Percona PostgreSQL operator** support with a dedicated **Percona PostgreSQL** tab in grouped layout:
+  - Cluster inventory (`kubectl get pg` style): endpoint, status, Postgres/pgBouncer counts, CR version, PG version, PMM, age — CR YAML linked by name
+  - Workload pods table (PostgreSQL instances + pgBouncer) from `pods.yaml`
+  - Workload and operator pod logs (same viewer as PXC/PS)
+  - Operator deployment summary: version, `PGO_WORKERS` concurrency, created age, PMM across clusters
+  - Backups, restores, and upgrades tables (`PerconaPGBackup`, `PerconaPGRestore`, `PerconaPGUpgrade`) with kind-based YAML discovery
+  - TLS certificates from `*-cluster-cert` and `pgo-root-cacert` dump files
+- All PG list YAMLs discovered dynamically via `internal/dumpfiles` (no hardcoded filenames)
+
 ## [0.7.0] - 2026-07-07
 
 ### Added

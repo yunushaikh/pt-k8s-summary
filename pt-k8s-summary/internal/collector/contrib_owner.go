@@ -29,5 +29,6 @@ func ownerSections() []SectionCollector {
 		psPVCSizingSection{},
 		psStatusSection{},
 		psTopologySection{},
+		pgCertificatesSection{},
 	}
 }

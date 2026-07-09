@@ -1,0 +1,226 @@
+<h2>Percona PostgreSQL clusters (operator CR)</h2>
+{{ if .PGEmpty }}
+<p class="meta">No <code>PerconaPGCluster</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code> (searched recursively for kind-matched list exports).</p>
+{{ else }}
+<p class="meta">{{ .PGMeta }} kubectl-style summary from cluster CR YAML. Click a cluster name to view the CR document from the dump.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Endpoint</th>
+<th>Status</th>
+<th>Postgres</th>
+<th>pgBouncer</th>
+<th>CR version</th>
+<th>PG version</th>
+<th>PMM</th>
+<th>Age</th>
+</tr>
+</thead>
+<tbody>
+{{ range .PGRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .CRYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .CRYAMLModalID }}-full">{{ .CRYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .CRYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td class="pxc-cr-name-cell"><code>{{ .Endpoint }}</code></td>
+<td>{{ .Status }}</td>
+<td>{{ .PostgresCount }}</td>
+<td>{{ .PGBouncerCount }}</td>
+<td>{{ .CRVersion }}</td>
+<td>{{ .PostgresVersion }}</td>
+<td>{{ .PMMEnabled }}</td>
+<td>{{ .Age }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+
+<h2>Percona PostgreSQL operator</h2>
+{{ if not .PGOperatorRows }}
+<p class="meta">No PostgreSQL operator <code>Deployment</code> found in namespace <code>deployments.yaml</code> dumps (label <code>pgv2.percona.com/control-plane=postgres-operator</code>).</p>
+{{ else }}
+<p class="meta">From <code>deployments.yaml</code> in the dump. PMM column summarizes <code>spec.pmm.enabled</code> across PerconaPGCluster CRs.</p>
+<table>
+<thead><tr><th>Deployment</th><th>Namespace</th><th>Created</th><th>Operator version</th><th>PGO_WORKERS</th><th>PMM (clusters)</th></tr></thead>
+<tbody>
+{{ range .PGOperatorRows }}
+<tr><td>{{ .Name }}</td><td>{{ .Namespace }}</td><td>{{ .Created }}</td><td>{{ .Version }}</td><td>{{ .Concurrency }}</td><td>{{ .PMMEnabled }}</td></tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+
+<h2>PostgreSQL workload pods</h2>
+{{ if not .PGPodRows }}
+<p class="meta">No PostgreSQL instance or pgBouncer pods found in <code>pods.yaml</code> under the dump.</p>
+{{ else }}
+<p class="meta">From merged <code>pods.yaml</code> (PostgreSQL instances and pgBouncer). Pod logs: see sections below when present.</p>
+<table>
+<thead><tr><th>Namespace</th><th>Name</th><th>Role</th><th>Ready</th><th>Status</th><th>Restarts</th><th>Age</th><th>IP</th><th>Node</th><th>Image / version</th></tr></thead>
+<tbody>
+{{ range .PGPodRows }}
+<tr><td>{{ .Namespace }}</td><td class="pxc-cr-name-cell"><code>{{ .Name }}</code></td><td>{{ .Role }}</td><td>{{ .Ready }}</td><td>{{ .Status }}</td><td>{{ .Restarts }}</td><td>{{ .Age }}</td><td>{{ .PodIP }}</td><td>{{ .Node }}</td><td><code>{{ .PostgresVersion }}</code></td></tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+
+<h2>Percona PostgreSQL backups</h2>
+{{ if .PGBackupEmpty }}
+<p class="meta">No <code>PerconaPGBackup</code> resources found (kind-matched list YAML under the dump).</p>
+{{ else }}
+<p class="meta">{{ .PGBackupMeta }}</p>
+<table>
+<thead><tr><th>Name</th><th>Cluster</th><th>Repo</th><th>Destination</th><th>Status</th><th>Type</th><th>Completed</th><th>Age</th></tr></thead>
+<tbody>
+{{ range .PGBackupRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .BackupYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .BackupYAMLModalID }}-full">{{ .BackupYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .BackupYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Cluster }}</td><td>{{ .Repo }}</td><td>{{ .Destination }}</td><td>{{ .Status }}</td><td>{{ .BackupType }}</td><td>{{ .Completed }}</td><td>{{ .Age }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+
+<h2>Percona PostgreSQL restores</h2>
+{{ if .PGRestoreEmpty }}
+<p class="meta">No <code>PerconaPGRestore</code> resources found in the dump.</p>
+{{ else }}
+<p class="meta">{{ .PGRestoreMeta }}</p>
+<table>
+<thead><tr><th>Name</th><th>Cluster</th><th>Repo</th><th>Status</th><th>Age</th></tr></thead>
+<tbody>
+{{ range .PGRestoreRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .RestoreYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .RestoreYAMLModalID }}-full">{{ .RestoreYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .RestoreYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Cluster }}</td><td>{{ .Repo }}</td><td>{{ .Status }}</td><td>{{ .Age }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+
+<h2>Percona PostgreSQL upgrades</h2>
+{{ if .PGUpgradeEmpty }}
+<p class="meta">No <code>PerconaPGUpgrade</code> resources found in the dump.</p>
+{{ else }}
+<p class="meta">{{ .PGUpgradeMeta }}</p>
+<table>
+<thead><tr><th>Name</th><th>Cluster</th><th>Status</th><th>Age</th></tr></thead>
+<tbody>
+{{ range .PGUpgradeRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .UpgradeYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .UpgradeYAMLModalID }}-full">{{ .UpgradeYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .UpgradeYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Cluster }}</td><td>{{ .Status }}</td><td>{{ .Age }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+
+{{ define "groupedPGClusters" }}
+{{ if not .PGEmpty }}
+<h2>Percona PostgreSQL clusters (operator CR)</h2>
+<p class="meta">{{ .PGMeta }}</p>
+<table>
+<thead><tr><th>Name</th><th>Endpoint</th><th>Status</th><th>Postgres</th><th>pgBouncer</th><th>CR version</th><th>PG version</th><th>PMM</th><th>Age</th></tr></thead>
+<tbody>
+{{ range .PGRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .CRYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .CRYAMLModalID }}-full">{{ .CRYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .CRYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td><code>{{ .Endpoint }}</code></td><td>{{ .Status }}</td><td>{{ .PostgresCount }}</td><td>{{ .PGBouncerCount }}</td><td>{{ .CRVersion }}</td><td>{{ .PostgresVersion }}</td><td>{{ .PMMEnabled }}</td><td>{{ .Age }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}
+
+{{ define "groupedPGOperator" }}
+{{ if .PGOperatorRows }}
+<h2>Percona PostgreSQL operator</h2>
+<table>
+<thead><tr><th>Deployment</th><th>Namespace</th><th>Created</th><th>Operator version</th><th>PGO_WORKERS</th><th>PMM (clusters)</th></tr></thead>
+<tbody>
+{{ range .PGOperatorRows }}
+<tr><td>{{ .Name }}</td><td>{{ .Namespace }}</td><td>{{ .Created }}</td><td>{{ .Version }}</td><td>{{ .Concurrency }}</td><td>{{ .PMMEnabled }}</td></tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}
+
+{{ define "groupedPGPods" }}
+{{ if .PGPodRows }}
+<h2>PostgreSQL workload pods</h2>
+<table>
+<thead><tr><th>Namespace</th><th>Name</th><th>Role</th><th>Ready</th><th>Status</th><th>Restarts</th><th>Age</th><th>IP</th><th>Node</th><th>Image / version</th></tr></thead>
+<tbody>
+{{ range .PGPodRows }}
+<tr><td>{{ .Namespace }}</td><td><code>{{ .Name }}</code></td><td>{{ .Role }}</td><td>{{ .Ready }}</td><td>{{ .Status }}</td><td>{{ .Restarts }}</td><td>{{ .Age }}</td><td>{{ .PodIP }}</td><td>{{ .Node }}</td><td><code>{{ .PostgresVersion }}</code></td></tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}
+
+{{ define "groupedPGBackups" }}
+<h2>Percona PostgreSQL backups</h2>
+{{ if .PGBackupEmpty }}
+<p class="meta">No <code>PerconaPGBackup</code> resources found.</p>
+{{ else }}
+<p class="meta">{{ .PGBackupMeta }}</p>
+<table>
+<thead><tr><th>Name</th><th>Cluster</th><th>Repo</th><th>Destination</th><th>Status</th><th>Type</th><th>Completed</th><th>Age</th></tr></thead>
+<tbody>
+{{ range .PGBackupRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .BackupYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .BackupYAMLModalID }}-full">{{ .BackupYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .BackupYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Cluster }}</td><td>{{ .Repo }}</td><td>{{ .Destination }}</td><td>{{ .Status }}</td><td>{{ .BackupType }}</td><td>{{ .Completed }}</td><td>{{ .Age }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}
+
+{{ define "groupedPGRestores" }}
+<h2>Percona PostgreSQL restores</h2>
+{{ if .PGRestoreEmpty }}
+<p class="meta">No <code>PerconaPGRestore</code> resources found.</p>
+{{ else }}
+<p class="meta">{{ .PGRestoreMeta }}</p>
+<table>
+<thead><tr><th>Name</th><th>Cluster</th><th>Repo</th><th>Status</th><th>Age</th></tr></thead>
+<tbody>
+{{ range .PGRestoreRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .RestoreYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .RestoreYAMLModalID }}-full">{{ .RestoreYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .RestoreYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Cluster }}</td><td>{{ .Repo }}</td><td>{{ .Status }}</td><td>{{ .Age }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}
+
+{{ define "groupedPGUpgrades" }}
+<h2>Percona PostgreSQL upgrades</h2>
+{{ if .PGUpgradeEmpty }}
+<p class="meta">No <code>PerconaPGUpgrade</code> resources found.</p>
+{{ else }}
+<p class="meta">{{ .PGUpgradeMeta }}</p>
+<table>
+<thead><tr><th>Name</th><th>Cluster</th><th>Status</th><th>Age</th></tr></thead>
+<tbody>
+{{ range .PGUpgradeRows }}
+<tr>
+<td class="pxc-cr-name-cell">{{ if ne .UpgradeYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .UpgradeYAMLModalID }}-full">{{ .UpgradeYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .UpgradeYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Cluster }}</td><td>{{ .Status }}</td><td>{{ .Age }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}
