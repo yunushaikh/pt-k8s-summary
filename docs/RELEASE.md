@@ -81,6 +81,8 @@ Users read `CHANGELOG.md` on git and the same section on the GitHub Release page
 go test ./pt-k8s-summary/...
 ```
 
+Optional: install repo git hooks so Cursor never adds `Co-authored-by: Cursor` to commits (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+
 Optional cross-build smoke test:
 
 ```bash
