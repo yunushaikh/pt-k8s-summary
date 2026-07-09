@@ -1,0 +1,23 @@
+---
+description: Never attribute git work to Cursor Agent; commits must use the human author only
+alwaysApply: true
+---
+
+# Git author — no Cursor Agent as contributor
+
+Do not appear as a contributor on GitHub for this repository.
+
+## Commits
+
+- Never create commits with author/committer names or emails containing `Cursor`, `cursor-agent`, `Cursor Agent`, or similar.
+- Never add `Co-authored-by: Cursor` (or any Cursor/agent trailer) to commit messages.
+- When the user asks you to commit, use **their** git identity only.
+- If a commit would be created with a non-human author, stop and ask the user to commit locally.
+
+## Pull requests
+
+- Do not open PRs attributed to Cursor or bot accounts.
+
+## Releases and changelog
+
+- Do not credit "Cursor Agent" in CHANGELOG, release notes, or README contributor lists.

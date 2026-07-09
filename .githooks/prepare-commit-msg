@@ -1,0 +1,4 @@
+#!/bin/bash
+# Strip Cursor IDE/agent attribution from commit messages before they are finalized.
+# Installed via: git config core.hooksPath .githooks
+sed -i '/cursoragent@cursor\.com/d; /^Co-authored-by:.*[Cc]ursor/d; /^Made-with: Cursor/d; /^Made with Cursor/d' "$1"
