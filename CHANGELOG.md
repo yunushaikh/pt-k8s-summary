@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-07-09
+
+### Fixed
+
+- **Grouped layout duplication:** PXC, Percona Server, and PostgreSQL operator sections no longer render twice. Classic section templates were split into `*_classic.tmpl` (linear layout) and `*_grouped.tmpl` (tab defines only); the grouped report chain no longer appends classic operator bodies after the tab panels.
+
 ## [0.8.0] - 2026-07-09
 
 ### Added
