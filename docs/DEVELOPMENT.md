@@ -20,7 +20,8 @@ Keep operator-specific code in separate files so a change for one technology doe
 | **Common** | `events_section.go`, `pvc_section.go` | `nodes.yaml` |
 | **PXC** | `pxc_*_section.go`, `pxc_certificates_section.go` | `internal/jpreport/pxc.go` |
 | **Percona Server** | `ps_*_section.go`, `ps_certificates_section.go` | `internal/jpreport/ps.go`, `ps_cr_load.go` |
-| **Future** | `pg_*`, `mongo_*`, … (same pattern) | matching `jpreport/` loaders |
+| **PostgreSQL** | `pg_certificates_section.go`, `pg_pod_logs_section.go` | `jpreport/pg.go`, `pg_backup.go`, … |
+| **Future** | `mongo_*`, … (same pattern) | matching `jpreport/` loaders |
 
 Shared helpers (e.g. OpenSSL cert parsing, dump file location) live in neutral `*_common.go` or `internal/dumpfiles/locate.go`. Each section implements `Group()` for the grouped tab layout.
 

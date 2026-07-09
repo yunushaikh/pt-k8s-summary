@@ -10,3 +10,15 @@
 {{ .PSPodLogsHTML }}
 </section>
 {{ end }}
+{{ if .HasPGWorkloadPodLogs }}
+<section class="report-section pod-logs-top" id="pg-workload-pod-logs">
+<h2 class="pxc-pod-logs-h2">PostgreSQL · cluster &amp; pgBouncer pod logs</h2>
+{{ .PGWorkloadPodLogsHTML }}
+</section>
+{{ end }}
+{{ if .HasPGOperatorPodLogs }}
+<section class="report-section pod-logs-top" id="pg-operator-pod-logs">
+<h2 class="pxc-pod-logs-h2">PostgreSQL · operator pod logs</h2>
+{{ .PGOperatorPodLogsHTML }}
+</section>
+{{ end }}

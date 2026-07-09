@@ -17,6 +17,9 @@ var pxcBackupHTML string
 //go:embed ps_cluster_section.tmpl
 var psClusterHTML string
 
+//go:embed pg_cluster_section.tmpl
+var pgClusterHTML string
+
 //go:embed report_extra.html
 var reportExtraHTML string
 
@@ -35,6 +38,9 @@ var reportGroupedPXCTmpl string
 //go:embed report_grouped_ps.tmpl
 var reportGroupedPSTmpl string
 
+//go:embed report_grouped_pg.tmpl
+var reportGroupedPGTmpl string
+
 //go:embed report_grouped_tabs.js.html
 var reportGroupedTabsJSHTML string
 
@@ -45,10 +51,10 @@ var jpreportModalsHTML string
 var reportTailTmpl string
 
 // htmlTemplate is the classic (linear) report layout.
-var htmlTemplate = reportHeadHTML + reportPodLogsHTML + reportNodesHTML + pxcBackupHTML + psClusterHTML + reportExtraHTML + jpreportModalsHTML + reportTailTmpl
+var htmlTemplate = reportHeadHTML + reportPodLogsHTML + reportNodesHTML + pxcBackupHTML + psClusterHTML + pgClusterHTML + reportExtraHTML + jpreportModalsHTML + reportTailTmpl
 
-// htmlTemplateGrouped is the beta tabbed layout: Kubernetes | PXC | Percona Server.
-var htmlTemplateGrouped = reportHeadHTML + reportGroupedSectionsTmpl + reportGroupedTabsHTML + reportNodesHTML + reportGroupedCommonTmpl + reportGroupedPXCTmpl + reportGroupedPSTmpl + pxcBackupHTML + psClusterHTML + reportGroupedTabsJSHTML + jpreportModalsHTML + reportTailTmpl
+// htmlTemplateGrouped is the tabbed layout: Kubernetes | PXC | Percona Server | PostgreSQL.
+var htmlTemplateGrouped = reportHeadHTML + reportGroupedSectionsTmpl + reportGroupedTabsHTML + reportNodesHTML + reportGroupedCommonTmpl + reportGroupedPXCTmpl + reportGroupedPSTmpl + reportGroupedPGTmpl + pxcBackupHTML + psClusterHTML + pgClusterHTML + reportGroupedTabsJSHTML + jpreportModalsHTML + reportTailTmpl
 
 func reportTemplateSource(layout string) string {
 	if layout == "grouped" {

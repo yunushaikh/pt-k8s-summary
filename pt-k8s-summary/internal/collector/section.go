@@ -41,6 +41,7 @@ const (
 	GroupCommon SectionGroup = "common"
 	GroupPXC    SectionGroup = "pxc"
 	GroupPS     SectionGroup = "ps"
+	GroupPG     SectionGroup = "pg"
 )
 
 // SectionCollector reads dump files and returns an HTML fragment for the report.
@@ -94,6 +95,7 @@ func GatherSectionsByGroup(ctx dumpctx.Context) map[SectionGroup][]Section {
 		GroupCommon: nil,
 		GroupPXC:    nil,
 		GroupPS:     nil,
+		GroupPG:     nil,
 	}
 	for _, c := range allSectionCollectors() {
 		sec, ok := collectOne(c, ctx)

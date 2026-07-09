@@ -372,6 +372,22 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		psPodLogHTML = htempl.HTML(h)
 		hasPSPodLogs = true
 	}
+	var pgWorkloadPodLogHTML htempl.HTML
+	var hasPGWorkloadPodLogs bool
+	if h, err := collector.GatherPGWorkloadPodLogsForReportHTML(dumpAbs, out, podsData, now); err != nil {
+		fmt.Fprintf(os.Stderr, "pg workload pod logs: %v\n", err)
+	} else if h != "" {
+		pgWorkloadPodLogHTML = htempl.HTML(h)
+		hasPGWorkloadPodLogs = true
+	}
+	var pgOperatorPodLogHTML htempl.HTML
+	var hasPGOperatorPodLogs bool
+	if h, err := collector.GatherPGOperatorPodLogsForReportHTML(dumpAbs, out, podsData, now); err != nil {
+		fmt.Fprintf(os.Stderr, "pg operator pod logs: %v\n", err)
+	} else if h != "" {
+		pgOperatorPodLogHTML = htempl.HTML(h)
+		hasPGOperatorPodLogs = true
+	}
 	certCache := jpreport.NewCertifiedImageCache(certifiedImages)
 	pxcRows, pxcFileCount, err := jpreport.LoadPXCRowsFromDump(dumpAbs, now, podsData, certCache)
 	if err != nil {
@@ -451,18 +467,70 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		psBackupMeta = fmt.Sprintf("Found %d backup(s) in %d YAML file(s).", len(psBackupRows), psBackupFileCount)
 	}
 
+	pgRows, pgFileCount, err := jpreport.LoadPGRowsFromDump(dumpAbs, now)
+	if err != nil {
+		return fmt.Errorf("pg clusters: %w", err)
+	}
+	pgMeta := ""
+	if len(pgRows) > 0 {
+		pgMeta = fmt.Sprintf("Found %d cluster(s) in %d YAML file(s).", len(pgRows), pgFileCount)
+	}
+	pgOperatorRows, err := jpreport.LoadPGOperatorRowsFromDump(dumpAbs, now)
+	if err != nil {
+		return fmt.Errorf("pg operator: %w", err)
+	}
+	pgPodRows := jpreport.LoadPGWorkloadPodRows(podsData, dumpAbs, now)
+	pgBackupRows, pgBackupFileCount, err := jpreport.LoadPGBackupRowsFromDump(dumpAbs, now)
+	if err != nil {
+		return fmt.Errorf("pg backups: %w", err)
+	}
+	pgBackupMeta := ""
+	if len(pgBackupRows) > 0 {
+		pgBackupMeta = fmt.Sprintf("Found %d backup(s) in %d YAML file(s).", len(pgBackupRows), pgBackupFileCount)
+	}
+	pgRestoreRows, pgRestoreFileCount, err := jpreport.LoadPGRestoreRowsFromDump(dumpAbs, now)
+	if err != nil {
+		return fmt.Errorf("pg restores: %w", err)
+	}
+	pgRestoreMeta := ""
+	if len(pgRestoreRows) > 0 {
+		pgRestoreMeta = fmt.Sprintf("Found %d restore(s) in %d YAML file(s).", len(pgRestoreRows), pgRestoreFileCount)
+	}
+	pgUpgradeRows, pgUpgradeFileCount, err := jpreport.LoadPGUpgradeRowsFromDump(dumpAbs, now)
+	if err != nil {
+		return fmt.Errorf("pg upgrades: %w", err)
+	}
+	pgUpgradeMeta := ""
+	if len(pgUpgradeRows) > 0 {
+		pgUpgradeMeta = fmt.Sprintf("Found %d upgrade(s) in %d YAML file(s).", len(pgUpgradeRows), pgUpgradeFileCount)
+	}
+
 	extraSections := collector.GatherSections(dumpCtx)
 	sectionsByGroup := collector.GatherSectionsByGroup(dumpCtx)
 
 	hasPXCCore := len(pxcRows) > 0 || len(backupRows) > 0
 	hasPSCore := len(psRows) > 0 || len(psBackupRows) > 0
-	hasPXCTab := hasPXCCore || len(sectionsByGroup[collector.GroupPXC]) > 0 || (hasPodLogs && !hasPSCore)
-	hasPSTab := hasPSCore || len(sectionsByGroup[collector.GroupPS]) > 0 || (hasPSPodLogs && !hasPXCCore)
+	hasPGCore := len(pgRows) > 0 || len(pgBackupRows) > 0 || len(pgRestoreRows) > 0 || len(pgUpgradeRows) > 0 || len(pgOperatorRows) > 0 || len(pgPodRows) > 0
+	hasPXCTab := hasPXCCore || len(sectionsByGroup[collector.GroupPXC]) > 0 || (hasPodLogs && !hasPSCore && !hasPGCore)
+	hasPSTab := hasPSCore || len(sectionsByGroup[collector.GroupPS]) > 0 || (hasPSPodLogs && !hasPXCCore && !hasPGCore)
+	hasPGTab := hasPGCore || len(sectionsByGroup[collector.GroupPG]) > 0 || hasPGWorkloadPodLogs || hasPGOperatorPodLogs
 	defaultTab := "k8s"
-	if hasPSTab && !hasPXCTab {
-		defaultTab = "ps"
-	} else if hasPXCTab && !hasPSTab {
-		defaultTab = "pxc"
+	techTabs := 0
+	var soleTab string
+	if hasPXCTab {
+		techTabs++
+		soleTab = "pxc"
+	}
+	if hasPSTab {
+		techTabs++
+		soleTab = "ps"
+	}
+	if hasPGTab {
+		techTabs++
+		soleTab = "pg"
+	}
+	if techTabs == 1 {
+		defaultTab = soleTab
 	}
 
 	tmpl, err := template.New("report").Parse(reportTemplateSource(layout))
@@ -483,6 +551,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		DefaultTab            string
 		HasPXCTab             bool
 		HasPSTab              bool
+		HasPGTab              bool
 		GeneratedAt           string
 		ToolVersion           string
 		NodeCount             int
@@ -500,6 +569,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		CommonExtraSections   []collector.Section
 		PXCExtraSections      []collector.Section
 		PSExtraSections       []collector.Section
+		PGExtraSections       []collector.Section
 		HasPodLogs            bool
 		PodLogsHTML           htempl.HTML
 		HasPSPodLogs          bool
@@ -514,13 +584,32 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		PSBackupEmpty         bool
 		PSBackupMeta          string
 		PSBackupRows          []jpreport.BackupRowTmpl
+		PGEmpty               bool
+		PGMeta                string
+		PGRows                []jpreport.PGRowTmpl
+		PGOperatorRows        []jpreport.PGOperatorRowTmpl
+		PGPodRows             []jpreport.PGPodRowTmpl
+		PGBackupEmpty         bool
+		PGBackupMeta          string
+		PGBackupRows          []jpreport.PGBackupRowTmpl
+		PGRestoreEmpty        bool
+		PGRestoreMeta         string
+		PGRestoreRows         []jpreport.PGRestoreRowTmpl
+		PGUpgradeEmpty        bool
+		PGUpgradeMeta         string
+		PGUpgradeRows         []jpreport.PGUpgradeRowTmpl
+		HasPGWorkloadPodLogs  bool
+		PGWorkloadPodLogsHTML htempl.HTML
+		HasPGOperatorPodLogs  bool
+		PGOperatorPodLogsHTML htempl.HTML
 	}{
 		Proc:                  proc,
-		PageTitle:             reportPageTitle(hasPXCTab, hasPSTab),
+		PageTitle:             reportPageTitle(hasPXCTab, hasPSTab, hasPGTab),
 		Layout:                layout,
 		DefaultTab:            defaultTab,
 		HasPXCTab:             hasPXCTab,
 		HasPSTab:              hasPSTab,
+		HasPGTab:              hasPGTab,
 		GeneratedAt:           now.UTC().Format(time.RFC3339),
 		ToolVersion:           version.String(),
 		NodeCount:             len(nodeRows),
@@ -538,6 +627,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		CommonExtraSections:   sectionsByGroup[collector.GroupCommon],
 		PXCExtraSections:      sectionsByGroup[collector.GroupPXC],
 		PSExtraSections:       sectionsByGroup[collector.GroupPS],
+		PGExtraSections:       sectionsByGroup[collector.GroupPG],
 		HasPodLogs:            hasPodLogs,
 		PodLogsHTML:           podLogHTML,
 		HasPSPodLogs:          hasPSPodLogs,
@@ -552,27 +642,60 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		PSBackupEmpty:         len(psBackupRows) == 0,
 		PSBackupMeta:          psBackupMeta,
 		PSBackupRows:          psBackupRows,
+		PGEmpty:               len(pgRows) == 0,
+		PGMeta:                pgMeta,
+		PGRows:                pgRows,
+		PGOperatorRows:        pgOperatorRows,
+		PGPodRows:             pgPodRows,
+		PGBackupEmpty:         len(pgBackupRows) == 0,
+		PGBackupMeta:          pgBackupMeta,
+		PGBackupRows:          pgBackupRows,
+		PGRestoreEmpty:        len(pgRestoreRows) == 0,
+		PGRestoreMeta:         pgRestoreMeta,
+		PGRestoreRows:         pgRestoreRows,
+		PGUpgradeEmpty:        len(pgUpgradeRows) == 0,
+		PGUpgradeMeta:         pgUpgradeMeta,
+		PGUpgradeRows:         pgUpgradeRows,
+		HasPGWorkloadPodLogs:  hasPGWorkloadPodLogs,
+		PGWorkloadPodLogsHTML: pgWorkloadPodLogHTML,
+		HasPGOperatorPodLogs:  hasPGOperatorPodLogs,
+		PGOperatorPodLogsHTML: pgOperatorPodLogHTML,
 	}
 
 	if err := tmpl.Execute(outF, execData); err != nil {
 		return fmt.Errorf("render: %w", err)
 	}
 
-	printWroteReport(out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount, len(psRows), psFileCount, len(psBackupRows), psBackupFileCount)
+	printWroteReport(out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount, len(psRows), psFileCount, len(psBackupRows), psBackupFileCount, len(pgRows), pgFileCount, len(pgBackupRows), pgBackupFileCount)
 	return nil
 }
 
-func reportPageTitle(hasPXC, hasPS bool) string {
-	switch {
-	case hasPS && !hasPXC:
-		return "Cluster summary · Percona Server for MySQL"
-	case hasPXC && !hasPS:
-		return "Cluster summary · Percona XtraDB Cluster"
-	case hasPXC && hasPS:
-		return "Cluster summary · Kubernetes & Percona"
-	default:
+func reportPageTitle(hasPXC, hasPS, hasPG bool) string {
+	n := 0
+	if hasPXC {
+		n++
+	}
+	if hasPS {
+		n++
+	}
+	if hasPG {
+		n++
+	}
+	switch n {
+	case 1:
+		if hasPG && !hasPXC && !hasPS {
+			return "Cluster summary · Percona PostgreSQL"
+		}
+		if hasPS && !hasPXC && !hasPG {
+			return "Cluster summary · Percona Server for MySQL"
+		}
+		if hasPXC && !hasPS && !hasPG {
+			return "Cluster summary · Percona XtraDB Cluster"
+		}
+	case 0:
 		return "Kubernetes cluster summary"
 	}
+	return "Cluster summary · Kubernetes & Percona"
 }
 
 func defaultReportNameFromArchive(archiveAbs string) string {

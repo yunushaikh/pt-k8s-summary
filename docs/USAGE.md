@@ -49,7 +49,7 @@ pt-k8s-summary -version
 | `-out` | Output HTML path |
 | `-galera-since` | RFC3339 timestamp for pt-galera-log-explainer `--since=` |
 | `-certified-images` | Fetch/compare Percona certified images (default: `true`) |
-| `-layout` | Report layout: `grouped` (default, tabbed Kubernetes / PXC / Percona Server) or `classic` (linear) |
+| `-layout` | Report layout: `grouped` (default, tabbed Kubernetes / PXC / Percona Server / PostgreSQL) or `classic` (linear) |
 
 **Positional argument:** cluster dump archive (`.tar.gz` or `.tgz`). Use either the archive **or** `-dump`, not both.
 
@@ -62,6 +62,7 @@ pt-k8s-summary -version
 | **Kubernetes** | Always shown — nodes, cluster events, PVC inventory |
 | **Percona XtraDB Cluster** | Shown only when PXC CRs, backups, pod logs, or PXC collector sections exist |
 | **Percona Server for MySQL** | Shown only when PS CRs, backups, pod logs, or PS collector sections exist |
+| **Percona PostgreSQL** | Shown only when PG CRs, backups/restores/upgrades, operator data, pod logs, or PG collector sections exist |
 
 **Classic layout:** pass `-layout classic` for the previous single-page linear report.
 

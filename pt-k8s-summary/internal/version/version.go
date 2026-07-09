@@ -1,7 +1,7 @@
 package version
 
 // Version is the release semver (bump only when cutting a release).
-var Version = "0.7.0"
+var Version = "0.8.0"
 
 // Commit is injected at build time via -ldflags (short git SHA).
 var Commit = "dev"

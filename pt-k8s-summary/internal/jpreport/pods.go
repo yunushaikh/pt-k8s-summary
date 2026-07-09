@@ -362,8 +362,24 @@ func (l *PodLoader) PodOperatorKind(namespace, podName string) string {
 
 func operatorKindFromPodLabels(labels map[string]string, podName string) string {
 	if labels != nil {
+		if strings.TrimSpace(labels["pgv2.percona.com/control-plane"]) == "postgres-operator" {
+			return "pg-operator"
+		}
+		if strings.TrimSpace(labels["postgres-operator.crunchydata.com/cluster"]) != "" {
+			role := strings.TrimSpace(labels["postgres-operator.crunchydata.com/role"])
+			data := strings.TrimSpace(labels["postgres-operator.crunchydata.com/data"])
+			if role == "pgbouncer" || data == "postgres" {
+				return "pg-workload"
+			}
+		}
 		partOf := strings.TrimSpace(labels["app.kubernetes.io/part-of"])
 		comp := strings.TrimSpace(labels["app.kubernetes.io/component"])
+		if partOf == "pg-operator" && comp == "operator" {
+			return "pg-operator"
+		}
+		if strings.TrimSpace(labels["app.kubernetes.io/name"]) == "pg-operator" {
+			return "pg-operator"
+		}
 		switch partOf {
 		case "percona-server":
 			return "ps"
@@ -387,6 +403,9 @@ func operatorKindFromPodLabels(labels map[string]string, podName string) string 
 		case "haproxy", "operator":
 			if partOf == "percona-server" {
 				return "ps"
+			}
+			if partOf == "pg-operator" {
+				return "pg-operator"
 			}
 			if partOf == "pxc" || strings.Contains(partOf, "pxc") {
 				return "pxc"
@@ -417,6 +436,12 @@ func operatorKindFromPodName(podName string) string {
 	}
 	if strings.Contains(p, "percona-server-mysql-operator") {
 		return "ps"
+	}
+	if strings.Contains(p, "pg-operator") || strings.Contains(p, "percona-postgresql-operator") {
+		return "pg-operator"
+	}
+	if strings.Contains(p, "pgbouncer") || (strings.Contains(p, "-instance") && strings.Contains(p, "-pg-")) {
+		return "pg-workload"
 	}
 	if strings.Contains(p, "-pxc-") || strings.Contains(p, "proxysql") ||
 		strings.Contains(p, "pxc-operator") || strings.Contains(p, "xtradb-cluster-operator") {

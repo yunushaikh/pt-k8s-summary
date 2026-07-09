@@ -590,6 +590,10 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 		b.WriteString(`</pre></div></div>`)
 	} else if wantKind == "ps" {
 		b.WriteString(`<p class="pxc-plg-note">Percona Server for MySQL operator pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under each pod directory. Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB are previewed in the HTML; the complete file is copied to a sibling <code>_logs</code> directory next to the report and linked from the viewer.</p>`)
+	} else if wantKind == "pg-workload" {
+		b.WriteString(`<p class="pxc-plg-note">PostgreSQL instance and pgBouncer pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under each pod directory. Status columns come from <code>pods.yaml</code> when present. Use <strong>Formatted</strong> or <strong>Full</strong> in the viewer; large files are linked from the report <code>_logs</code> sidecar directory.</p>`)
+	} else if wantKind == "pg-operator" {
+		b.WriteString(`<p class="pxc-plg-note">Percona PostgreSQL operator pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under each pod directory. Status columns come from <code>pods.yaml</code> when present.</p>`)
 	}
 	b.WriteString("<script>(function(){\n")
 	b.WriteString(`  function closePlgHelptip(){

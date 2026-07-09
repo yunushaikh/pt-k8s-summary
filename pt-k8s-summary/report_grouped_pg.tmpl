@@ -1,0 +1,23 @@
+{{ if .HasPGTab }}
+<div id="panel-pg" class="report-tab-panel report-section" role="tabpanel" aria-labelledby="tab-btn-pg" data-tab-panel="pg"{{ if ne $.DefaultTab "pg" }} hidden{{ end }}>
+{{ if .HasPGWorkloadPodLogs }}
+<section class="report-section pod-logs-top" id="pg-workload-pod-logs">
+<h2 class="pxc-pod-logs-h2">PostgreSQL · cluster &amp; pgBouncer pod logs</h2>
+{{ .PGWorkloadPodLogsHTML }}
+</section>
+{{ end }}
+{{ if .HasPGOperatorPodLogs }}
+<section class="report-section pod-logs-top" id="pg-operator-pod-logs">
+<h2 class="pxc-pod-logs-h2">PostgreSQL · operator pod logs</h2>
+{{ .PGOperatorPodLogsHTML }}
+</section>
+{{ end }}
+{{ template "groupedPGClusters" . }}
+{{ template "groupedPGOperator" . }}
+{{ template "groupedPGPods" . }}
+{{ template "groupedPGBackups" . }}
+{{ template "groupedPGRestores" . }}
+{{ template "groupedPGUpgrades" . }}
+{{ template "groupedExtraSections" .PGExtraSections }}
+</div>
+{{ end }}
