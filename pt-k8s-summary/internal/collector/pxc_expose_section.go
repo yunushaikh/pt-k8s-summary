@@ -73,7 +73,7 @@ type pxcExposeListDoc struct {
 }
 
 func gatherPXCExposeRows(dumpRoot string) ([]pxcExposeRow, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}

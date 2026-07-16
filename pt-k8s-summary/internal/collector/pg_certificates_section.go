@@ -14,9 +14,9 @@ import (
 
 type pgCertificatesSection struct{}
 
-func (pgCertificatesSection) ID() string           { return "pg-ssl-certificates" }
-func (pgCertificatesSection) Title() string        { return "Certificates" }
-func (pgCertificatesSection) Group() SectionGroup  { return GroupPG }
+func (pgCertificatesSection) ID() string          { return "pg-ssl-certificates" }
+func (pgCertificatesSection) Title() string       { return "Certificates" }
+func (pgCertificatesSection) Group() SectionGroup { return GroupPG }
 
 func (pgCertificatesSection) Collect(ctx dumpctx.Context) (Section, error) {
 	htmlStr, err := gatherPGCertificateSectionHTML(ctx.Root())
@@ -41,7 +41,7 @@ type pgCertEntry struct {
 	SkipReason  string
 }
 
-var pgCertDumpSuffixes = []string{"-cluster-cert", "-replication-cert"}
+var pgCertDumpSuffixes = []string{"-cluster-ca-cert", "-cluster-cert", "-replication-cert"}
 var pgCertExactNames = []string{"pgo-root-cacert"}
 
 func isPGCertDumpFile(name string) bool {
@@ -149,7 +149,7 @@ func renderPGCertsTable(rows []pgCertEntry) string {
 	b.WriteString(`#pg-ssl-certificates .pxc-cert-table td.pxc-cert-mono { font-family: ui-monospace, Menlo, monospace; font-size: 0.7rem; }`)
 	b.WriteString(`#pg-ssl-certificates .pxc-cert-skip, #pg-ssl-certificates span.pxc-cert-skip { font-size: 0.7rem; color: #94a3b8; font-style: italic; }`)
 	b.WriteString(`</style>`)
-	b.WriteString(`<p class="pxc-cert-note">Percona PostgreSQL TLS material from collector files such as <code>&lt;namespace&gt;/&lt;cluster&gt;-cluster-cert</code> and <code>pgo-root-cacert</code>. Each row is one certificate with issuer, <strong>Not Before</strong>, and <strong>Not After</strong> parsed from OpenSSL <code>x509 -text</code> output in the dump.</p>`)
+	b.WriteString(`<p class="pxc-cert-note">Percona PostgreSQL TLS material from collector files such as <code>&lt;namespace&gt;/&lt;cluster&gt;-cluster-cert</code>, <code>&lt;cluster&gt;-cluster-ca-cert</code>, and <code>pgo-root-cacert</code>. Each row is one certificate with issuer, <strong>Not Before</strong>, and <strong>Not After</strong> parsed from OpenSSL <code>x509 -text</code> output in the dump.</p>`)
 	b.WriteString(`<table class="pxc-cert-table"><thead><tr>`)
 	b.WriteString(`<th scope="col">Namespace</th><th scope="col">Cluster</th><th scope="col">Dump file</th><th scope="col">cert</th>`)
 	b.WriteString(`<th scope="col">Issuer</th><th scope="col">Start (Not Before)</th><th scope="col">Expiry (Not After)</th><th scope="col">Note</th>`)

@@ -1,6 +1,6 @@
 <h2>Percona XtraDB clusters (operator CR)</h2>
 {{ if .PXCEmpty }}
-<p class="meta">No <code>PerconaXtraDBCluster</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code> (searched recursively for <code>perconaxtradbclusters.pxc.percona.com.yaml</code>).</p>
+<p class="meta">No <code>PerconaXtraDBCluster</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code> (searched recursively for <code>perconaxtradbclusters.pxc.percona.com.yaml</code>, <code>perconaxtradbclusters.yaml</code>, and kind-matched list exports).</p>
 {{ else }}
 <p class="meta">{{ .PXCMeta }} Dump root: <code>{{ .Proc.DumpRootDisplay }}</code> · Pod status and dump log files: see <strong>PXC · operator &amp; pod logs</strong> above; node inventory follows that section.</p>
 <table>
@@ -71,7 +71,7 @@
 
 <h2>Percona XtraDB Cluster backups</h2>
 {{ if .BackupEmpty }}
-<p class="meta">No <code>PerconaXtraDBClusterBackup</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code> (searched recursively for <code>perconaxtradbclusterbackups.pxc.percona.com.yaml</code>).</p>
+<p class="meta">No <code>PerconaXtraDBClusterBackup</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code> (searched recursively for <code>perconaxtradbclusterbackups.pxc.percona.com.yaml</code>, <code>perconaxtradbclusterbackups.yaml</code>, and kind-matched list exports).</p>
 {{ else }}
 <p class="meta">{{ .BackupMeta }} Filter matches name, cluster, storage, destination, status, and age only (not backup log content).</p>
 <details class="nodes-coll" id="pxc-backups-coll">

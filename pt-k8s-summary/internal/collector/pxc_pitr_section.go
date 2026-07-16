@@ -61,7 +61,7 @@ type pitrPXCListDoc struct {
 }
 
 func gatherPITRRows(dumpRoot string) ([]pitrRow, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}

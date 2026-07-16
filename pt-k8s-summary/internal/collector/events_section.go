@@ -22,8 +22,8 @@ const eventsMessageMaxRunes = 400
 // eventsDumpSection renders merged Kubernetes Event lists from namespace events.yaml dumps.
 type eventsDumpSection struct{}
 
-func (eventsDumpSection) ID() string    { return "dump-events" }
-func (eventsDumpSection) Title() string { return "Cluster events" }
+func (eventsDumpSection) ID() string          { return "dump-events" }
+func (eventsDumpSection) Title() string       { return "Cluster events" }
 func (eventsDumpSection) Group() SectionGroup { return GroupCommon }
 
 func (eventsDumpSection) Collect(ctx dumpctx.Context) (Section, error) {
@@ -46,17 +46,28 @@ type eventListYAML struct {
 type eventItemYAML struct {
 	Type           string `yaml:"type"`
 	Reason         string `yaml:"reason"`
-	Message        string `yaml:"message"`
+	Message        string `yaml:"message"` // core/v1
+	Note           string `yaml:"note"`    // events.k8s.io/v1
 	LastTimestamp  string `yaml:"lastTimestamp"`
 	FirstTimestamp string `yaml:"firstTimestamp"`
 	EventTime      any    `yaml:"eventTime"` // string MicroTime or null
 	Count          int    `yaml:"count"`
-	InvolvedObject struct {
+	// events.k8s.io/v1 deprecated core/v1 fields:
+	DeprecatedCount          int    `yaml:"deprecatedCount"`
+	DeprecatedLastTimestamp  string `yaml:"deprecatedLastTimestamp"`
+	DeprecatedFirstTimestamp string `yaml:"deprecatedFirstTimestamp"`
+	InvolvedObject           struct {
 		Kind            string `yaml:"kind"`
 		Name            string `yaml:"name"`
 		Namespace       string `yaml:"namespace"`
 		ResourceVersion string `yaml:"resourceVersion"`
-	} `yaml:"involvedObject"`
+	} `yaml:"involvedObject"` // core/v1
+	Regarding struct {
+		Kind            string `yaml:"kind"`
+		Name            string `yaml:"name"`
+		Namespace       string `yaml:"namespace"`
+		ResourceVersion string `yaml:"resourceVersion"`
+	} `yaml:"regarding"` // events.k8s.io/v1
 	Metadata struct {
 		Namespace         string `yaml:"namespace"`
 		CreationTimestamp string `yaml:"creationTimestamp"`
@@ -116,7 +127,9 @@ func sortTimeForEvent(ev eventItemYAML) time.Time {
 	candidates := []string{
 		eventTimeString(ev.EventTime),
 		ev.LastTimestamp,
+		ev.DeprecatedLastTimestamp,
 		ev.FirstTimestamp,
+		ev.DeprecatedFirstTimestamp,
 		ev.Metadata.CreationTimestamp,
 	}
 	for _, c := range candidates {
@@ -125,6 +138,35 @@ func sortTimeForEvent(ev eventItemYAML) time.Time {
 		}
 	}
 	return time.Time{}
+}
+
+func eventMessage(ev eventItemYAML) string {
+	if m := strings.TrimSpace(ev.Message); m != "" {
+		return m
+	}
+	return strings.TrimSpace(ev.Note)
+}
+
+func eventObjectRef(ev eventItemYAML) (kind, name, namespace string) {
+	kind = strings.TrimSpace(ev.InvolvedObject.Kind)
+	name = strings.TrimSpace(ev.InvolvedObject.Name)
+	namespace = strings.TrimSpace(ev.InvolvedObject.Namespace)
+	if kind == "" && name == "" {
+		kind = strings.TrimSpace(ev.Regarding.Kind)
+		name = strings.TrimSpace(ev.Regarding.Name)
+		namespace = strings.TrimSpace(ev.Regarding.Namespace)
+	}
+	return kind, name, namespace
+}
+
+func eventCount(ev eventItemYAML) int {
+	if ev.Count > 0 {
+		return ev.Count
+	}
+	if ev.DeprecatedCount > 0 {
+		return ev.DeprecatedCount
+	}
+	return 1
 }
 
 func truncateRunesMsg(s string, max int) string {
@@ -154,11 +196,12 @@ func gatherEventsSectionHTML(dumpRoot string) (string, error) {
 			continue
 		}
 		for _, ev := range list.Items {
+			invKind, invName, invNS := eventObjectRef(ev)
 			ns := ev.Metadata.Namespace
 			if ns == "" {
-				ns = ev.InvolvedObject.Namespace
+				ns = invNS
 			}
-			inv := strings.TrimSpace(ev.InvolvedObject.Kind + "/" + ev.InvolvedObject.Name)
+			inv := strings.TrimSpace(invKind + "/" + invName)
 			if inv == "/" {
 				inv = "—"
 			}
@@ -167,22 +210,23 @@ func gatherEventsSectionHTML(dumpRoot string) (string, error) {
 			if !st.IsZero() {
 				last = st.UTC().Format("2006-01-02 15:04:05 UTC")
 			}
-			msg := strings.TrimSpace(ev.Message)
+			msg := eventMessage(ev)
 			msgEsc := html.EscapeString(msg)
 			msgCell := html.EscapeString(truncateRunesMsg(msg, eventsMessageMaxRunes))
 			rc := ""
 			if strings.EqualFold(strings.TrimSpace(ev.Type), "Warning") {
 				rc = "dump-ev-warn"
 			}
+			cntN := eventCount(ev)
 			cnt := "1"
-			if ev.Count > 1 {
-				cnt = fmt.Sprintf("%d", ev.Count)
+			if cntN > 1 {
+				cnt = fmt.Sprintf("%d", cntN)
 			}
 			rows = append(rows, eventDisplayRow{
 				SortTime:   st,
 				LastSeen:   last,
 				Type:       strings.TrimSpace(ev.Type),
-				Namespace: strings.TrimSpace(ns),
+				Namespace:  strings.TrimSpace(ns),
 				Object:     inv,
 				Reason:     strings.TrimSpace(ev.Reason),
 				Message:    msgCell,
@@ -222,7 +266,7 @@ func gatherEventsSectionHTML(dumpRoot string) (string, error) {
 #dump-events .dump-ev-table tr.dump-ev-warn td.dump-ev-type { color: #b91c1c; }
 #dump-events .dump-ev-note { font-size: 0.7rem; color: #64748b; margin: 0.5rem 0 0 0; line-height: 1.4; }
 </style>`)
-	b.WriteString(`<p class="dump-ev-note">Merged from <code>events.yaml</code> under each namespace folder in the dump. Newest events first (by <code>eventTime</code> / <code>lastTimestamp</code> / <code>firstTimestamp</code> / creation time). Use the filter to match any column text.</p>`)
+	b.WriteString(`<p class="dump-ev-note">Merged from <code>events.yaml</code> under each namespace folder in the dump (core <code>v1</code> and <code>events.k8s.io/v1</code>). Newest events first (by <code>eventTime</code> / <code>lastTimestamp</code> / <code>deprecatedLastTimestamp</code> / creation time). Use the filter to match any column text.</p>`)
 	b.WriteString(`<details class="nodes-coll dump-ev-outer"><summary class="nodes-coll-sum" aria-label="Expand or collapse the events table"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Kubernetes events</strong><span class="nodes-coll-sum-meta">`)
 	b.WriteString(esc(fmt.Sprintf("%d event(s) · newest first · filterable grid", len(rows))))
 	b.WriteString(`</span></span></summary><div class="nodes-coll-inner dump-ev-inner">`)

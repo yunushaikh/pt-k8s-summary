@@ -11,10 +11,10 @@ import (
 	"time"
 	"unicode"
 
+	"pt-k8s-summary/internal/dumpfiles"
+
 	"gopkg.in/yaml.v3"
 )
-
-const pxcFileName = "perconaxtradbclusters.pxc.percona.com.yaml"
 
 type pxcListDoc struct {
 	Items []pxcClusterYAML `yaml:"items"`
@@ -138,8 +138,8 @@ func safePXCCRYAMLModalID(ns, crName string, fileIdx, itemIdx int) string {
 }
 
 // pxcCRYAMLEscapedForModal returns HTML-escaped YAML for one PerconaXtraDBCluster document:
-// the matching element under items in perconaxtradbclusters.pxc.percona.com.yaml (preserves
-// fields beyond the report struct). Falls back to marshaling the parsed struct if extraction fails.
+// the matching element under items in the PXC cluster list export (preserves fields beyond
+// the report struct). Falls back to marshaling the parsed struct if extraction fails.
 func pxcCRYAMLEscapedForModal(fileBytes []byte, cr *pxcClusterYAML, fileIdx, itemIdx int) (escaped string, modalID string, ok bool) {
 	if cr == nil {
 		return "", "", false
@@ -243,31 +243,10 @@ func extractPXCCRItemYAMLRaw(data []byte, wantNS, wantName string) ([]byte, bool
 	return nil, false
 }
 
-// ListPXCYAMLFiles returns absolute paths to every perconaxtradbclusters.pxc.percona.com.yaml under root.
+// ListPXCYAMLFiles returns absolute paths to PerconaXtraDBCluster list YAML under root
+// (legacy *.pxc.percona.com.yaml and short perconaxtradbclusters.yaml names).
 func ListPXCYAMLFiles(root string) ([]string, error) {
-	return findPXCYAMLs(root)
-}
-
-func findPXCYAMLs(root string) ([]string, error) {
-	root = filepath.Clean(root)
-	var paths []string
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if filepath.Base(path) == pxcFileName {
-			paths = append(paths, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(paths)
-	return paths, nil
+	return dumpfiles.FindListYAMLFiles(root, dumpfiles.PXCClusterList)
 }
 
 func LoadPXCRowsFromDump(dumpRoot string, now time.Time, pods *PodLoader, cert *CertifiedImageCache) ([]PXCRowTmpl, int, error) {
@@ -275,7 +254,7 @@ func LoadPXCRowsFromDump(dumpRoot string, now time.Time, pods *PodLoader, cert *
 	if err != nil {
 		return nil, 0, err
 	}
-	paths, err := findPXCYAMLs(dumpAbs)
+	paths, err := dumpfiles.FindListYAMLFiles(dumpAbs, dumpfiles.PXCClusterList)
 	if err != nil {
 		return nil, 0, err
 	}

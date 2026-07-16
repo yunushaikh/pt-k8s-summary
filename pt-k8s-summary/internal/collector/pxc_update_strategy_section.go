@@ -56,7 +56,7 @@ type pxcUpdateStrategyListDoc struct {
 }
 
 func gatherPXCUpdateStrategyRows(dumpRoot string) ([]pxcUpdateStrategyRow, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}

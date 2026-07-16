@@ -66,7 +66,7 @@ type pxcRepListDoc struct {
 }
 
 func gatherPXCReplicationRows(dumpRoot string) ([]pxcRepCluster, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}

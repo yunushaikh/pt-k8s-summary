@@ -29,7 +29,7 @@ type pausePXCListDoc struct {
 }
 
 func gatherPauseRows(dumpRoot string) ([]pauseRow, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}

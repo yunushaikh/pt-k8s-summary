@@ -61,7 +61,7 @@ type pxcExtraPVCListDoc struct {
 }
 
 func gatherPXCExtraPVCRows(dumpRoot string) ([]pxcExtraPVCClusterRow, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}
