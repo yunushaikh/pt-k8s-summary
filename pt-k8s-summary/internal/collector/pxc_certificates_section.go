@@ -32,7 +32,7 @@ func (pxcCertificatesSection) Collect(ctx dumpctx.Context) (Section, error) {
 }
 
 func pxcClusterKeysFromDump(dumpRoot string) (map[string]struct{}, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}

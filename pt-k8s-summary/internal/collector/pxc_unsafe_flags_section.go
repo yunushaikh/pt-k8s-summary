@@ -38,7 +38,7 @@ type unsafePXCListDoc struct {
 }
 
 func gatherUnsafeFlagRows(dumpRoot string) ([]unsafeFlagCluster, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}

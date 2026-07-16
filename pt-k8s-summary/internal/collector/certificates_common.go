@@ -23,10 +23,11 @@ type internalCertEntry struct {
 }
 
 var (
-	reFileHeader  = regexp.MustCompile(`^(?i)[a-z0-9._-]+\.(?:crt|pem|cer|key)$`)
-	opensslIssuer = regexp.MustCompile(`(?m)Issuer:\s*(.+)$`)
-	opensslStart  = regexp.MustCompile(`(?m)Not Before:\s*(.+)$`)
-	opensslEnd    = regexp.MustCompile(`(?m)Not After\s*:\s*(.+)$`)
+	reFileHeader        = regexp.MustCompile(`^(?i)[a-z0-9._-]+\.(?:crt|pem|cer|key)$`)
+	reDecodedFileHeader = regexp.MustCompile(`(?i)^---\s*Decoded\s+([a-z0-9._-]+\.(?:crt|pem|cer|key))\s*---$`)
+	opensslIssuer       = regexp.MustCompile(`(?m)Issuer:\s*(.+)$`)
+	opensslStart        = regexp.MustCompile(`(?m)Not Before:\s*(.+)$`)
+	opensslEnd          = regexp.MustCompile(`(?m)Not After\s*:\s*(.+)$`)
 )
 
 var sslCertDumpSuffixes = []string{"-ssl-internal", "-ca-cert", "-ssl"}
@@ -74,7 +75,20 @@ func isOpenSSLFileHeader(s string) bool {
 	if s == "" || strings.Contains(s, "/") || strings.Contains(s, string(filepath.Separator)) {
 		return false
 	}
-	return reFileHeader.MatchString(s)
+	if reFileHeader.MatchString(s) {
+		return true
+	}
+	return reDecodedFileHeader.MatchString(s)
+}
+
+// openSSLCertComponentName returns the cert/key basename from a dump header line
+// (bare "tls.crt" or "--- Decoded tls.crt ---").
+func openSSLCertComponentName(header string) string {
+	header = strings.TrimSpace(header)
+	if m := reDecodedFileHeader.FindStringSubmatch(header); len(m) > 1 {
+		return m[1]
+	}
+	return header
 }
 
 func parseOpenSSLTextCerts(dump []byte) []struct {
@@ -97,7 +111,7 @@ func parseOpenSSLTextCerts(dump []byte) []struct {
 		t := strings.TrimSpace(line)
 		if isOpenSSLFileHeader(t) {
 			flush()
-			curName = t
+			curName = openSSLCertComponentName(t)
 			blockBuf.Reset()
 			continue
 		}

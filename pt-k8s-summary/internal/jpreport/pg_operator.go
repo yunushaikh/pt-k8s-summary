@@ -13,12 +13,12 @@ import (
 
 // PGOperatorRowTmpl summarizes a Percona PostgreSQL operator Deployment from dumps.
 type PGOperatorRowTmpl struct {
-	Name         string
-	Namespace    string
-	Created      string
-	Version      string
-	Concurrency  string
-	PMMEnabled   string
+	Name        string
+	Namespace   string
+	Created     string
+	Version     string
+	Concurrency string
+	PMMEnabled  string
 }
 
 type deploymentListDoc struct {
@@ -27,9 +27,9 @@ type deploymentListDoc struct {
 
 type deploymentItemYAML struct {
 	Metadata struct {
-		Name              string `yaml:"name"`
-		Namespace         string `yaml:"namespace"`
-		CreationTimestamp string `yaml:"creationTimestamp"`
+		Name              string            `yaml:"name"`
+		Namespace         string            `yaml:"namespace"`
+		CreationTimestamp string            `yaml:"creationTimestamp"`
 		Labels            map[string]string `yaml:"labels"`
 	} `yaml:"metadata"`
 	Spec struct {
@@ -119,15 +119,29 @@ func isPGOperatorDeployment(d *deploymentItemYAML) bool {
 		return false
 	}
 	l := d.Metadata.Labels
-	if l == nil {
-		return false
+	if l != nil {
+		if strings.TrimSpace(l["pgv2.percona.com/control-plane"]) == "postgres-operator" {
+			return true
+		}
+		if strings.TrimSpace(l["app.kubernetes.io/part-of"]) == "pg-operator" &&
+			strings.TrimSpace(l["app.kubernetes.io/name"]) == "pg-operator" {
+			return true
+		}
+		for k := range l {
+			if strings.HasPrefix(k, "operators.coreos.com/percona-postgresql-operator") {
+				return true
+			}
+		}
 	}
-	if strings.TrimSpace(l["pgv2.percona.com/control-plane"]) == "postgres-operator" {
+	name := strings.ToLower(strings.TrimSpace(d.Metadata.Name))
+	if name == "percona-postgresql-operator" || strings.Contains(name, "percona-postgresql-operator") {
 		return true
 	}
-	if strings.TrimSpace(l["app.kubernetes.io/part-of"]) == "pg-operator" &&
-		strings.TrimSpace(l["app.kubernetes.io/name"]) == "pg-operator" {
-		return true
+	for _, c := range d.Spec.Template.Spec.Containers {
+		img := strings.ToLower(strings.TrimSpace(c.Image))
+		if strings.Contains(img, "percona-postgresql-operator") {
+			return true
+		}
 	}
 	return false
 }

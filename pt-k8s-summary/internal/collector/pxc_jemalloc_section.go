@@ -53,7 +53,7 @@ type pxcJemallocListDoc struct {
 }
 
 func gatherPXCJemallocRows(dumpRoot string) ([]pxcJemallocRow, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}

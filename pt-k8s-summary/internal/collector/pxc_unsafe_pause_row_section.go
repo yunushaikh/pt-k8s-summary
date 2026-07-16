@@ -33,7 +33,7 @@ func (pxcUnsafePauseRowSection) Collect(ctx dumpctx.Context) (Section, error) {
 
 func renderUnsafePauseRow(unsafeClusters []unsafeFlagCluster, pauseRows []pauseRow) string {
 	return renderUnsafePauseRowWithKeys(unsafeClusters, pauseRows, pxcUnsafeFlagKeys, "pxc-unsafe-flags-pause",
-		"PXC · unsafeFlags", "PXC · spec.pause", pxcCRListFile, "PerconaXtraDBCluster")
+		"PXC · unsafeFlags", "PXC · spec.pause", "PerconaXtraDBCluster list YAML", "PerconaXtraDBCluster")
 }
 
 const rowPXCSep = "\x00"

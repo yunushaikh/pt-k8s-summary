@@ -10,10 +10,10 @@ import (
 	"time"
 	"unicode"
 
+	"pt-k8s-summary/internal/dumpfiles"
+
 	"gopkg.in/yaml.v3"
 )
-
-const pxcBackupFileName = "perconaxtradbclusterbackups.pxc.percona.com.yaml"
 
 type pxcBackupClusterYAML struct {
 	Metadata struct {
@@ -51,28 +51,6 @@ type BackupRowTmpl struct {
 	PodLogModalID         string
 	BackupManifestEscaped string
 	BackupManifestModalID string
-}
-
-func findPXCBackupYAMLs(root string) ([]string, error) {
-	root = filepath.Clean(root)
-	var paths []string
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if filepath.Base(path) == pxcBackupFileName {
-			paths = append(paths, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(paths)
-	return paths, nil
 }
 
 type backupWithTime struct {
@@ -123,7 +101,7 @@ func LoadBackupRowsFromDump(dumpRoot string, now time.Time, pods *PodLoader) ([]
 	if err != nil {
 		return nil, 0, err
 	}
-	paths, err := findPXCBackupYAMLs(dumpAbs)
+	paths, err := dumpfiles.FindListYAMLFiles(dumpAbs, dumpfiles.PXCBackupList)
 	if err != nil {
 		return nil, 0, err
 	}

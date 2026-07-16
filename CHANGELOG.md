@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-07-16
+
+### Fixed
+
+- **New collector dump layout:** PXC cluster and backup discovery now uses `dumpfiles.FindListYAMLFiles` (legacy long basenames and short names such as `perconaxtradbclusters.yaml`), matching PG/PS. Everest/OLM dumps under namespace folders are detected again.
+- **Events (`events.k8s.io/v1`):** parse `note` / `regarding` / `deprecatedCount` / `deprecated*Timestamp` while keeping core `v1` field names.
+- **PG operator (OLM/Everest):** detect Deployments by name, image, or `operators.coreos.com/percona-postgresql-operator*` labels in addition to Helm control-plane labels.
+- **PG certificates:** recognize `*-cluster-ca-cert` dump files alongside existing cert suffixes; parse `--- Decoded <file> ---` OpenSSL headers used by newer collectors (also unblocks PXC cert tables on those dumps).
+
 ## [0.8.1] - 2026-07-09
 
 ### Fixed

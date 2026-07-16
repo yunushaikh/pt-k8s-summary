@@ -14,9 +14,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// pxcCRListFile is the kubectl list export name for PerconaXtraDBCluster CRs.
-const pxcCRListFile = "perconaxtradbclusters.pxc.percona.com.yaml"
-
 type helmPXCRow struct {
 	Name, Namespace string
 	IsHelm          bool
@@ -78,7 +75,7 @@ type pxcUnifiedListDoc struct {
 }
 
 func gatherPXCHelmPMMPairs(dumpRoot string) ([]pxcHelmPMMPair, error) {
-	paths, err := findYAMLFiles(dumpRoot, pxcCRListFile)
+	paths, err := findPXCClusterListYAML(dumpRoot)
 	if err != nil {
 		return nil, err
 	}
