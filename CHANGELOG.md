@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Certified images on older operator releases:** Percona removed the certified-images tables from release notes before PXC 1.17.0 / PS 0.11.0, and every docs page carries a sidebar link with the same wording, so the old text match always hit it and reported "docs layout may have changed". Detection now keys on the section heading, so an unpublished list reads as a neutral note and only a genuinely unparsable section is flagged as an error. Images are marked **not checked** instead of a misleading red **no** when no list is available.
+
+### Added
+
+- **Galera timeline coverage:** the `pt-galera-log-explainer` section now lists every PXC member log that was scanned, the time window it covers, and whether it contributed to the timeline. The tool omits logs it recognizes no events in, which previously made a quiet window look like a parsing failure.
+
 ## [0.8.2] - 2026-07-16
 
 ### Fixed

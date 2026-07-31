@@ -1,9 +1,11 @@
 package collector
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -53,6 +55,115 @@ func findPXCMysqldErrorLogPaths(dumpRoot string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+// galeraLogCoverage describes one member log so a near-empty timeline can be read correctly:
+// a quiet window with no state transitions looks identical to a broken parse otherwise.
+type galeraLogCoverage struct {
+	Pod       string
+	First     string
+	Last      string
+	HasEvents bool
+}
+
+var galeraLogTimestampRE = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)`)
+
+// podNameFromMysqldErrorLogPath maps <ns>/<pod>/var/lib/mysql/mysqld-error.log to <pod>.
+func podNameFromMysqldErrorLogPath(p string) string {
+	d := filepath.Dir(p) // …/var/lib/mysql
+	for i := 0; i < 3; i++ {
+		d = filepath.Dir(d)
+	}
+	if base := filepath.Base(d); base != "." && base != string(filepath.Separator) {
+		return base
+	}
+	return filepath.Base(p)
+}
+
+// logTimeSpan returns the first and last log timestamps, streaming so large logs stay cheap.
+func logTimeSpan(path string) (first, last string) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", ""
+	}
+	defer f.Close()
+	r := bufio.NewReaderSize(f, 64*1024)
+	for {
+		line, err := r.ReadString('\n')
+		if len(line) > 0 {
+			head := line
+			if len(head) > 32 {
+				head = head[:32]
+			}
+			if m := galeraLogTimestampRE.FindStringSubmatch(head); m != nil {
+				if first == "" {
+					first = m[1]
+				}
+				last = m[1]
+			}
+		}
+		if err != nil {
+			return first, last
+		}
+	}
+}
+
+// summarizeGaleraLogs pairs each scanned member log with the timeline output. A log counts as
+// having events when the explainer printed a column for it; the tool omits files entirely when
+// it recognizes nothing in them.
+func summarizeGaleraLogs(paths []string, explainerOut string) []galeraLogCoverage {
+	var out []galeraLogCoverage
+	for _, p := range paths {
+		pod := podNameFromMysqldErrorLogPath(p)
+		first, last := logTimeSpan(p)
+		// The identifier row carries the full path; the "current path" row is left-truncated,
+		// so also try the tail as a fallback.
+		hasEvents := strings.Contains(explainerOut, p)
+		if !hasEvents {
+			if tail := pod + "/var/lib/mysql/" + filepath.Base(p); strings.Contains(explainerOut, tail) {
+				hasEvents = true
+			}
+		}
+		out = append(out, galeraLogCoverage{Pod: pod, First: first, Last: last, HasEvents: hasEvents})
+	}
+	return out
+}
+
+// renderGaleraCoverageHTML shows which member logs fed the timeline and the window each covers.
+func renderGaleraCoverageHTML(cov []galeraLogCoverage) string {
+	if len(cov) == 0 {
+		return ""
+	}
+	esc := html.EscapeString
+	quiet := 0
+	for _, c := range cov {
+		if !c.HasEvents {
+			quiet++
+		}
+	}
+	var b strings.Builder
+	b.WriteString(`<p class="pxc-gle-meta" style="color:#64748b;margin:0.6rem 0 0.25rem 0;">`)
+	b.WriteString(esc(fmt.Sprintf("Member logs scanned: %d · with recognized events: %d", len(cov), len(cov)-quiet)))
+	if quiet > 0 {
+		b.WriteString(` — the timeline only lists nodes whose logs contain events it recognizes (SST/IST, view changes, state transitions, restarts). A log with none is usually a quiet window or one filled with repeated warnings, not a parsing failure.`)
+	}
+	b.WriteString(`</p>`)
+	b.WriteString(`<table class="pxc-inner-table"><thead><tr><th>Member log</th><th>Log covers</th><th>In timeline</th></tr></thead><tbody>`)
+	for _, c := range cov {
+		span := "—"
+		if c.First != "" && c.Last != "" {
+			span = c.First + " → " + c.Last
+		}
+		b.WriteString(`<tr><td><code>` + esc(c.Pod) + `</code></td><td>` + esc(span) + `</td><td>`)
+		if c.HasEvents {
+			b.WriteString(`<span class="unsafe-flags-ok">yes</span>`)
+		} else {
+			b.WriteString(`<span class="status-muted">no recognized events</span>`)
+		}
+		b.WriteString(`</td></tr>`)
+	}
+	b.WriteString(`</tbody></table>`)
+	return b.String()
 }
 
 // runPTGaleraLogExplainer runs: pt-galera-log-explainer [ --since=RFC3339 ] [ --pxc-operator ] --no-color list --all <paths>

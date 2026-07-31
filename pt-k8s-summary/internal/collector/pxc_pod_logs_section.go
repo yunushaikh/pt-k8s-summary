@@ -576,6 +576,9 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 			}
 			b.WriteString(`<button type="button" class="pxc-gle-btn" id="pxc-gle-open" disabled>View timeline</button>`)
 		}
+		if len(glePaths) > 0 {
+			b.WriteString(renderGaleraCoverageHTML(summarizeGaleraLogs(glePaths, gleOut)))
+		}
 		b.WriteString(`</div>`)
 		if gleOut != "" {
 			b.WriteString(`<pre class="pxc-gle-blob" id="pxc-gle-stash">` + esc(gleOut) + `</pre>`)

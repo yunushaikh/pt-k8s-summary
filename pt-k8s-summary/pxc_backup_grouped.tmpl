@@ -29,11 +29,11 @@
 </tr>
 <tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
 <h3 class="pxc-subsection-title">Container images vs certified images</h3>
-<p class="meta">Compared using <code>spec.crVersion</code> <strong>{{ .CRVersion }}</strong> against the <a href="{{ .CertifiedDocURL }}" target="_blank" rel="noopener noreferrer">Percona certified images</a> list for that operator release.{{ if .CertifiedFetchErrEscaped }}<br><span class="status-bad">{{ .CertifiedFetchErrEscaped }}</span>{{ end }}</p>
+<p class="meta">Compared using <code>spec.crVersion</code> <strong>{{ .CRVersion }}</strong> against the <a href="{{ .CertifiedDocURL }}" target="_blank" rel="noopener noreferrer">Percona certified images</a> list for that operator release.{{ if .CertifiedFetchErrEscaped }}<br><span class="{{ if .CertifiedListUnpublished }}status-muted{{ else }}status-bad{{ end }}">{{ .CertifiedFetchErrEscaped }}</span>{{ end }}</p>
 <table class="pxc-inner-table">
 <thead><tr><th>Image (from <code>pods.yaml</code>)</th><th>Matches certified list</th></tr></thead>
 <tbody>
-{{ range .ImageCertRows }}<tr><td><code>{{ .ImageEscaped }}</code></td><td>{{ if .IsCertified }}<span class="unsafe-flags-ok">yes</span>{{ else }}<span class="unsafe-flags-bad">no</span>{{ end }}</td></tr>
+{{ range .ImageCertRows }}<tr><td><code>{{ .ImageEscaped }}</code></td><td>{{ if .CertUnknown }}<span class="status-muted" title="No certified images list available for this operator release">not checked</span>{{ else if .IsCertified }}<span class="unsafe-flags-ok">yes</span>{{ else }}<span class="unsafe-flags-bad">no</span>{{ end }}</td></tr>
 {{ else }}<tr><td colspan="2" class="status-muted">No container images found for this cluster in <code>pods.yaml</code> (expected labels <code>app.kubernetes.io/instance</code> and component <code>haproxy</code>, <code>proxysql</code>, or <code>pxc</code>).</td></tr>{{ end }}
 </tbody>
 </table>
