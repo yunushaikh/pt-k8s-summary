@@ -88,6 +88,7 @@ type pxcPXCStatusYAML struct {
 type ImageCertRowTmpl struct {
 	ImageEscaped string
 	IsCertified  bool
+	CertUnknown  bool // no certified list available, so "no" would be misleading
 }
 
 type PXCRowTmpl struct {
@@ -124,6 +125,7 @@ type PXCRowTmpl struct {
 	PXCPods                    []PXCPodRowTmpl
 	CertifiedDocURL            string
 	CertifiedFetchErrEscaped   string
+	CertifiedListUnpublished   bool
 	ImageCertRows              []ImageCertRowTmpl
 }
 
@@ -336,9 +338,10 @@ func buildPXCRowTmpl(cr *pxcClusterYAML, now time.Time, pods *PodLoader, dumpRoo
 		row.PXCPods = pods.podsForPerconaComponent(ns, name, "pxc", now, dumpRoot)
 	}
 	if cert != nil {
-		certRefs, docURL, certErr := cert.Lookup(crVerRaw)
+		certRefs, docURL, certErr, unpublished := cert.Lookup(crVerRaw)
 		row.CertifiedDocURL = docURL
 		row.CertifiedFetchErrEscaped = htmltemplate.HTMLEscapeString(certErr)
+		row.CertifiedListUnpublished = unpublished
 		listOK := certErr == "" && certRefs != nil
 		var podImgs []podImageRef
 		if pods != nil {
@@ -349,6 +352,7 @@ func buildPXCRowTmpl(cr *pxcClusterYAML, now time.Time, pods *PodLoader, dumpRoo
 			row.ImageCertRows = append(row.ImageCertRows, ImageCertRowTmpl{
 				ImageEscaped: htmltemplate.HTMLEscapeString(pir.Display),
 				IsCertified:  listOK && hit,
+				CertUnknown:  !listOK,
 			})
 		}
 	}

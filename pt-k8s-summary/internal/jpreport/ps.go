@@ -117,6 +117,7 @@ type PSRowTmpl struct {
 	MySQLConfigModalID   string
 	CertifiedDocURL            string
 	CertifiedFetchErrEscaped   string
+	CertifiedListUnpublished   bool
 	ImageCertRows              []ImageCertRowTmpl
 }
 
@@ -280,9 +281,10 @@ func buildPSRowTmpl(cr *psClusterYAML, now time.Time, pods *PodLoader, dumpRoot 
 	ns := cr.Metadata.Namespace
 	name := cr.Metadata.Name
 	if cert != nil {
-		certRefs, docURL, certErr := cert.LookupPS(crVerRaw)
+		certRefs, docURL, certErr, unpublished := cert.LookupPS(crVerRaw)
 		row.CertifiedDocURL = docURL
 		row.CertifiedFetchErrEscaped = htmltemplate.HTMLEscapeString(certErr)
+		row.CertifiedListUnpublished = unpublished
 		listOK := certErr == "" && certRefs != nil
 		var podImgs []podImageRef
 		if pods != nil {
@@ -293,6 +295,7 @@ func buildPSRowTmpl(cr *psClusterYAML, now time.Time, pods *PodLoader, dumpRoot 
 			row.ImageCertRows = append(row.ImageCertRows, ImageCertRowTmpl{
 				ImageEscaped: htmltemplate.HTMLEscapeString(pir.Display),
 				IsCertified:  listOK && hit,
+				CertUnknown:  !listOK,
 			})
 		}
 	}
