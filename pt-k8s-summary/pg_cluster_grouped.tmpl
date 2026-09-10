@@ -1,7 +1,7 @@
 {{ define "groupedPGClusters" }}
 {{ if not .PGEmpty }}
 <h2>Percona PostgreSQL clusters (operator CR)</h2>
-<p class="meta">{{ .PGMeta }}</p>
+<p class="meta">{{ .PGMeta }} Kubernetes events for these resources are under the <strong>Kubernetes</strong> tab → Events (filter by cluster or pod name — any column text, space-separated AND).</p>
 <table>
 <thead><tr><th>Name</th><th>Endpoint</th><th>Status</th><th>Postgres</th><th>pgBouncer</th><th>CR version</th><th>PG version</th><th>PMM</th><th>Age</th></tr></thead>
 <tbody>
@@ -10,6 +10,22 @@
 <td class="pxc-cr-name-cell">{{ if ne .CRYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .CRYAMLModalID }}-full">{{ .CRYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .CRYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
 <td><code>{{ .Endpoint }}</code></td><td>{{ .Status }}</td><td>{{ .PostgresCount }}</td><td>{{ .PGBouncerCount }}</td><td>{{ .CRVersion }}</td><td>{{ .PostgresVersion }}</td><td>{{ .PMMEnabled }}</td><td>{{ .Age }}</td>
 </tr>
+{{ if .HasPatroni }}
+<tr><td colspan="{{ $.PGMainColspan }}" class="pxc-comp-wrap">
+<h3 class="pxc-subsection-title">Patroni (<code>spec.patroni</code>)</h3>
+<table class="pxc-inner-table">
+<thead><tr><th>syncPeriodSeconds</th><th>leaderLeaseDurationSeconds</th><th>port</th><th>postgresql.parameters</th></tr></thead>
+<tbody>
+<tr>
+<td>{{ .PatroniSyncPeriod }}</td>
+<td>{{ .PatroniLeaderLease }}</td>
+<td>{{ .PatroniPort }}</td>
+<td class="pxc-cfg-cell">{{ if ne .PatroniParamsFullEscaped "" }}<pre class="pxc-cfg-snippet">{{ .PatroniParamsSnippet }}</pre><textarea readonly hidden class="pxc-cfg-full-store" id="{{ .PatroniParamsModalID }}-full">{{ .PatroniParamsFullEscaped }}</textarea><div class="pxc-cfg-openwrap"><button type="button" class="pxc-cfg-btn" data-target="{{ .PatroniParamsModalID }}" data-cfg-label="PostgreSQL parameters" data-cfg-path="spec.patroni.dynamicConfiguration.postgresql.parameters">{{ if .PatroniParamsTruncated }}Show full parameters{{ else }}View PostgreSQL parameters{{ end }}</button></div>{{ else }}{{ .PatroniParamsSnippet }}{{ end }}</td>
+</tr>
+</tbody>
+</table>
+</td></tr>
+{{ end }}
 {{ end }}
 </tbody>
 </table>
@@ -33,11 +49,19 @@
 {{ define "groupedPGPods" }}
 {{ if .PGPodRows }}
 <h2>PostgreSQL workload pods</h2>
+<p class="meta">From merged <code>pods.yaml</code>. <strong>Role (pod)</strong> is <code>postgres-operator.crunchydata.com/role</code>; <strong>Role (Patroni)</strong> is the latest Patroni heartbeat in the instance pod logs. Mismatches are highlighted.</p>
 <table>
-<thead><tr><th>Namespace</th><th>Name</th><th>Role</th><th>Ready</th><th>Status</th><th>Restarts</th><th>Age</th><th>IP</th><th>Node</th><th>Image / version</th></tr></thead>
+<thead><tr><th>Namespace</th><th>Name</th><th>Kind</th><th>Role (pod)</th><th>Role (Patroni)</th><th>Ready</th><th>Status</th><th>Restarts</th><th>Age</th><th>IP</th><th>Node</th><th>Image / version</th></tr></thead>
 <tbody>
 {{ range .PGPodRows }}
-<tr><td>{{ .Namespace }}</td><td><code>{{ .Name }}</code></td><td>{{ .Role }}</td><td>{{ .Ready }}</td><td>{{ .Status }}</td><td>{{ .Restarts }}</td><td>{{ .Age }}</td><td>{{ .PodIP }}</td><td>{{ .Node }}</td><td><code>{{ .PostgresVersion }}</code></td></tr>
+<tr{{ if .RoleMismatch }} class="dump-ev-warn"{{ end }}>
+<td>{{ .Namespace }}</td>
+<td><code>{{ .Name }}</code></td>
+<td>{{ .Kind }}</td>
+<td>{{ .RolePod }}</td>
+<td>{{ if .RoleMismatch }}<span class="unsafe-flags-bad">{{ .RolePatroni }}{{ if .RolePatroniFollow }} <span class="sub">(following {{ .RolePatroniFollow }})</span>{{ end }}</span>{{ else }}{{ .RolePatroni }}{{ if .RolePatroniFollow }} <span class="sub">(following {{ .RolePatroniFollow }})</span>{{ end }}{{ end }}</td>
+<td>{{ .Ready }}</td><td>{{ .Status }}</td><td>{{ .Restarts }}</td><td>{{ .Age }}</td><td>{{ .PodIP }}</td><td>{{ .Node }}</td><td><code>{{ .PostgresVersion }}</code></td>
+</tr>
 {{ end }}
 </tbody>
 </table>
@@ -49,18 +73,62 @@
 {{ if .PGBackupEmpty }}
 <p class="meta">No <code>PerconaPGBackup</code> resources found.</p>
 {{ else }}
-<p class="meta">{{ .PGBackupMeta }}</p>
-<table>
+<p class="meta">{{ .PGBackupMeta }} Filter matches name, cluster, repo, destination, status, type, and age. Click a name for the backup YAML.</p>
+<details class="nodes-coll" id="pg-backups-coll">
+<summary class="nodes-coll-sum" aria-label="Expand or collapse the PostgreSQL backups table"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Backup inventory</strong><span class="nodes-coll-sum-meta">{{ len .PGBackupRows }} {{ if eq (len .PGBackupRows) 1 }}backup{{ else }}backups{{ end }} · filterable · collapsed by default</span></span></summary>
+<div class="nodes-coll-inner">
+<div class="report-tbl-toolbar"><label>Filter <input type="search" class="report-tbl-filter" id="pg-backup-filter" placeholder="e.g. Failed, cluster name, repo…" autocomplete="off" spellcheck="false"></label><span class="report-tbl-meta" id="pg-backup-visible"></span></div>
+<div class="report-tbl-scroll">
+<table class="pxc-backup-table">
 <thead><tr><th>Name</th><th>Cluster</th><th>Repo</th><th>Destination</th><th>Status</th><th>Type</th><th>Completed</th><th>Age</th></tr></thead>
-<tbody>
+<tbody class="pg-backup-tbody">
 {{ range .PGBackupRows }}
-<tr>
-<td class="pxc-cr-name-cell">{{ if ne .BackupYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .BackupYAMLModalID }}-full">{{ .BackupYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .BackupYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
-<td>{{ .Cluster }}</td><td>{{ .Repo }}</td><td>{{ .Destination }}</td><td>{{ .Status }}</td><td>{{ .BackupType }}</td><td>{{ .Completed }}</td><td>{{ .Age }}</td>
+<tr class="pg-backup-row" data-backup-status="{{ .Status }}">
+<td class="pxc-backup-col pxc-cr-name-cell">{{ if ne .BackupYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .BackupYAMLModalID }}-full">{{ .BackupYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .BackupYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td class="pxc-backup-col">{{ .Cluster }}</td>
+<td class="pxc-backup-col">{{ .Repo }}</td>
+<td class="pxc-backup-col">{{ .Destination }}</td>
+<td class="pxc-backup-col">{{ .Status }}</td>
+<td class="pxc-backup-col">{{ .BackupType }}</td>
+<td class="pxc-backup-col">{{ .Completed }}</td>
+<td class="pxc-backup-col">{{ .Age }}</td>
 </tr>
 {{ end }}
 </tbody>
 </table>
+</div>
+</div>
+</details>
+<script>(function(){
+  var sec=document.getElementById("pg-backups-coll");
+  if(!sec)return;
+  var inp=sec.querySelector("#pg-backup-filter");
+  var tbody=sec.querySelector(".pg-backup-tbody");
+  var vis=sec.querySelector("#pg-backup-visible");
+  if(!inp||!tbody)return;
+  var total=tbody.querySelectorAll("tr.pg-backup-row").length;
+  function updateCount(n){ if(vis) vis.textContent=n===total ? total+" shown" : n+" of "+total+" shown"; }
+  updateCount(total);
+  function haystack(tr){
+    var parts=[];
+    tr.querySelectorAll("td.pxc-backup-col").forEach(function(td){
+      var c=td.cloneNode(true);
+      c.querySelectorAll("textarea").forEach(function(t){ t.remove(); });
+      parts.push(c.textContent.trim());
+    });
+    return parts.join(" ").toLowerCase().replace(/\s+/g," ");
+  }
+  inp.addEventListener("input", function(){
+    var q=inp.value.trim().toLowerCase();
+    var n=0;
+    tbody.querySelectorAll("tr.pg-backup-row").forEach(function(tr){
+      var show=q===""||(tr.getAttribute("data-backup-status")||"").toLowerCase().indexOf(q)>=0||haystack(tr).indexOf(q)>=0;
+      tr.style.display=show?"":"none";
+      if(show) n++;
+    });
+    updateCount(n);
+  });
+})();</script>
 {{ end }}
 {{ end }}
 
@@ -69,18 +137,59 @@
 {{ if .PGRestoreEmpty }}
 <p class="meta">No <code>PerconaPGRestore</code> resources found.</p>
 {{ else }}
-<p class="meta">{{ .PGRestoreMeta }}</p>
-<table>
+<p class="meta">{{ .PGRestoreMeta }} Filter matches name, cluster, repo, status, and age. Click a name for the restore YAML.</p>
+<details class="nodes-coll" id="pg-restores-coll">
+<summary class="nodes-coll-sum" aria-label="Expand or collapse the PostgreSQL restores table"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Restore inventory</strong><span class="nodes-coll-sum-meta">{{ len .PGRestoreRows }} {{ if eq (len .PGRestoreRows) 1 }}restore{{ else }}restores{{ end }} · filterable · collapsed by default</span></span></summary>
+<div class="nodes-coll-inner">
+<div class="report-tbl-toolbar"><label>Filter <input type="search" class="report-tbl-filter" id="pg-restore-filter" placeholder="e.g. Failed, cluster name, repo…" autocomplete="off" spellcheck="false"></label><span class="report-tbl-meta" id="pg-restore-visible"></span></div>
+<div class="report-tbl-scroll">
+<table class="pxc-backup-table">
 <thead><tr><th>Name</th><th>Cluster</th><th>Repo</th><th>Status</th><th>Age</th></tr></thead>
-<tbody>
+<tbody class="pg-restore-tbody">
 {{ range .PGRestoreRows }}
-<tr>
-<td class="pxc-cr-name-cell">{{ if ne .RestoreYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .RestoreYAMLModalID }}-full">{{ .RestoreYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .RestoreYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
-<td>{{ .Cluster }}</td><td>{{ .Repo }}</td><td>{{ .Status }}</td><td>{{ .Age }}</td>
+<tr class="pg-restore-row" data-backup-status="{{ .Status }}">
+<td class="pxc-backup-col pxc-cr-name-cell">{{ if ne .RestoreYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .RestoreYAMLModalID }}-full">{{ .RestoreYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .RestoreYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td class="pxc-backup-col">{{ .Cluster }}</td>
+<td class="pxc-backup-col">{{ .Repo }}</td>
+<td class="pxc-backup-col">{{ .Status }}</td>
+<td class="pxc-backup-col">{{ .Age }}</td>
 </tr>
 {{ end }}
 </tbody>
 </table>
+</div>
+</div>
+</details>
+<script>(function(){
+  var sec=document.getElementById("pg-restores-coll");
+  if(!sec)return;
+  var inp=sec.querySelector("#pg-restore-filter");
+  var tbody=sec.querySelector(".pg-restore-tbody");
+  var vis=sec.querySelector("#pg-restore-visible");
+  if(!inp||!tbody)return;
+  var total=tbody.querySelectorAll("tr.pg-restore-row").length;
+  function updateCount(n){ if(vis) vis.textContent=n===total ? total+" shown" : n+" of "+total+" shown"; }
+  updateCount(total);
+  function haystack(tr){
+    var parts=[];
+    tr.querySelectorAll("td.pxc-backup-col").forEach(function(td){
+      var c=td.cloneNode(true);
+      c.querySelectorAll("textarea").forEach(function(t){ t.remove(); });
+      parts.push(c.textContent.trim());
+    });
+    return parts.join(" ").toLowerCase().replace(/\s+/g," ");
+  }
+  inp.addEventListener("input", function(){
+    var q=inp.value.trim().toLowerCase();
+    var n=0;
+    tbody.querySelectorAll("tr.pg-restore-row").forEach(function(tr){
+      var show=q===""||(tr.getAttribute("data-backup-status")||"").toLowerCase().indexOf(q)>=0||haystack(tr).indexOf(q)>=0;
+      tr.style.display=show?"":"none";
+      if(show) n++;
+    });
+    updateCount(n);
+  });
+})();</script>
 {{ end }}
 {{ end }}
 

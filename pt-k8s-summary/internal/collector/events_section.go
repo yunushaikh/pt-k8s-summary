@@ -266,11 +266,11 @@ func gatherEventsSectionHTML(dumpRoot string) (string, error) {
 #dump-events .dump-ev-table tr.dump-ev-warn td.dump-ev-type { color: #b91c1c; }
 #dump-events .dump-ev-note { font-size: 0.7rem; color: #64748b; margin: 0.5rem 0 0 0; line-height: 1.4; }
 </style>`)
-	b.WriteString(`<p class="dump-ev-note">Merged from <code>events.yaml</code> under each namespace folder in the dump (core <code>v1</code> and <code>events.k8s.io/v1</code>). Newest events first (by <code>eventTime</code> / <code>lastTimestamp</code> / <code>deprecatedLastTimestamp</code> / creation time). Use the filter to match any column text.</p>`)
+	b.WriteString(`<p class="dump-ev-note">Merged from <code>events.yaml</code> under each namespace folder in the dump (core <code>v1</code> and <code>events.k8s.io/v1</code>). Newest events first (by <code>eventTime</code> / <code>lastTimestamp</code> / <code>deprecatedLastTimestamp</code> / creation time). Filter matches <strong>any column text</strong> (type, namespace, object, reason, message, …). Space-separated words are ANDed — every word must appear somewhere in the row.</p>`)
 	b.WriteString(`<details class="nodes-coll dump-ev-outer"><summary class="nodes-coll-sum" aria-label="Expand or collapse the events table"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Kubernetes events</strong><span class="nodes-coll-sum-meta">`)
 	b.WriteString(esc(fmt.Sprintf("%d event(s) · newest first · filterable grid", len(rows))))
 	b.WriteString(`</span></span></summary><div class="nodes-coll-inner dump-ev-inner">`)
-	b.WriteString(`<div class="dump-ev-toolbar"><label>Filter <input type="search" class="dump-ev-filter" id="dump-ev-filter" placeholder="Reason, message, object, namespace…" autocomplete="off" spellcheck="false"></label><span class="dump-ev-meta" id="dump-ev-visible"></span></div>`)
+	b.WriteString(`<div class="dump-ev-toolbar"><label>Filter <input type="search" class="dump-ev-filter" id="dump-ev-filter" placeholder="Any text… e.g. Warning Failed my-pod  (all words must match)" autocomplete="off" spellcheck="false"></label><span class="dump-ev-meta" id="dump-ev-visible"></span></div>`)
 	b.WriteString(`<div class="dump-ev-scroll"><table class="dump-ev-table"><thead><tr><th>Last seen</th><th>Type</th><th>Namespace</th><th>Object</th><th>Reason</th><th>Message</th><th>Count</th></tr></thead><tbody class="dump-ev-tbody">`)
 	for _, r := range rows {
 		b.WriteString(`<tr class="`)
@@ -307,10 +307,15 @@ func gatherEventsSectionHTML(dumpRoot string) (string, error) {
   }
   updateCount(total);
   inp.addEventListener("input", function(){
-    var q=inp.value.trim().toLowerCase();
+    var raw=inp.value.trim().toLowerCase();
+    var tokens=raw==="" ? [] : raw.split(/\s+/).filter(Boolean);
     var n=0;
     tbody.querySelectorAll("tr").forEach(function(tr){
-      var show=q===""||tr.textContent.toLowerCase().indexOf(q)>=0;
+      var text=tr.textContent.toLowerCase();
+      var show=true;
+      for(var i=0;i<tokens.length;i++){
+        if(text.indexOf(tokens[i])<0){ show=false; break; }
+      }
       tr.style.display=show?"":"none";
       if(show) n++;
     });

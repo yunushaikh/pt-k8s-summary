@@ -14,6 +14,7 @@ User and maintainer guides for [pt-k8s-summary](https://github.com/yunushaikh/pt
 
 | Document | Description |
 |----------|-------------|
+| [FEATURES.md](FEATURES.md) | How each report feature gets its data (sources, fallbacks, comparisons) |
 | [../CHANGELOG.md](../CHANGELOG.md) | Version history and release notes |
 | [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) | Pre-built binaries (`linux` / `darwin`, amd64 & arm64) and `SHA256SUMS` |
 

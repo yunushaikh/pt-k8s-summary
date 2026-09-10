@@ -1,0 +1,26 @@
+---
+description: Document every report feature — data sources, fallbacks, and how it appears in the HTML
+alwaysApply: true
+---
+
+# Feature documentation (required with every feature)
+
+Whenever you add or change a **user-visible report feature**, update [`docs/FEATURES.md`](../FEATURES.md) in the **same change**.
+
+## What to document for each feature
+
+1. **What it shows** — one sentence, UI location (tab / section / column).
+2. **Primary source** — exact dump path, YAML field, label, or log pattern.
+3. **Fallback / secondary source** — if the primary is missing or may be stale, what else is checked.
+4. **Comparison** — if two sources are shown side by side, say why (e.g. labels vs live logs).
+5. **Missing / unknown** — what the report shows when neither source has data.
+6. **Caveats** — stale data, truncated logs, operator version differences.
+
+## Do not
+
+- Ship a feature with only a CHANGELOG bullet and no FEATURES.md entry.
+- Document implementation gossip (function names) instead of **where the dump data comes from**.
+
+## Template
+
+Copy the `## Feature: …` block at the top of `docs/FEATURES.md` and fill it in before considering the feature done.

@@ -42,8 +42,15 @@
 <tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
 <h3 class="pxc-subsection-title">HAProxy</h3>
 <table class="pxc-inner-table">
-<thead><tr><th>Size</th><th>Status</th><th>Version</th></tr></thead>
-<tbody><tr><td>{{ .HAProxySize }}</td><td>{{ .HAProxyStatus }}</td><td>{{ .HAProxyVersion }}</td></tr></tbody>
+<thead><tr><th>Size (CR)</th><th>STS replicas</th><th>STS ready</th><th>CR ↔ STS</th><th>Status</th><th>Version</th></tr></thead>
+<tbody><tr{{ if .HAProxySTSMismatch }} class="dump-ev-warn"{{ end }}>
+<td>{{ .HAProxySize }}</td>
+<td>{{ .HAProxySTSReplicas }}</td>
+<td>{{ .HAProxySTSReady }}</td>
+<td>{{ if .HAProxySTSMismatch }}<span class="unsafe-flags-bad">{{ .HAProxySTSNote }}</span>{{ else }}{{ .HAProxySTSNote }}{{ end }}</td>
+<td>{{ .HAProxyStatus }}</td>
+<td>{{ .HAProxyVersion }}</td>
+</tr></tbody>
 </table>
 </td></tr>
 {{ end }}
@@ -51,16 +58,31 @@
 <tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
 <h3 class="pxc-subsection-title">ProxySQL</h3>
 <table class="pxc-inner-table">
-<thead><tr><th>Size</th><th>Status</th><th>Version</th></tr></thead>
-<tbody><tr><td>{{ .ProxySQLSize }}</td><td>{{ .ProxySQLStatus }}</td><td>{{ .ProxySQLVersion }}</td></tr></tbody>
+<thead><tr><th>Size (CR)</th><th>STS replicas</th><th>STS ready</th><th>CR ↔ STS</th><th>Status</th><th>Version</th></tr></thead>
+<tbody><tr{{ if .ProxySQLSTSMismatch }} class="dump-ev-warn"{{ end }}>
+<td>{{ .ProxySQLSize }}</td>
+<td>{{ .ProxySQLSTSReplicas }}</td>
+<td>{{ .ProxySQLSTSReady }}</td>
+<td>{{ if .ProxySQLSTSMismatch }}<span class="unsafe-flags-bad">{{ .ProxySQLSTSNote }}</span>{{ else }}{{ .ProxySQLSTSNote }}{{ end }}</td>
+<td>{{ .ProxySQLStatus }}</td>
+<td>{{ .ProxySQLVersion }}</td>
+</tr></tbody>
 </table>
 </td></tr>
 {{ end }}
 <tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
 <h3 class="pxc-subsection-title">PXC</h3>
 <table class="pxc-inner-table">
-<thead><tr><th>Size</th><th>Status</th><th>Version</th><th>MySQL <code>configuration</code></th></tr></thead>
-<tbody><tr><td>{{ .PXCSize }}</td><td>{{ .PXCStatus }}</td><td>{{ .PXCVersion }}</td><td class="pxc-cfg-cell"><pre class="pxc-cfg-snippet">{{ .PXCConfigSnippet }}</pre>{{ if ne .PXCConfigFullEscaped "" }}<textarea readonly hidden class="pxc-cfg-full-store" id="{{ .PXCConfigModalID }}-full">{{ .PXCConfigFullEscaped }}</textarea><div class="pxc-cfg-openwrap"><button type="button" class="pxc-cfg-btn" data-target="{{ .PXCConfigModalID }}">{{ if .PXCConfigTruncated }}Show full configuration{{ else }}View MySQL configuration{{ end }}</button></div>{{ end }}</td></tr></tbody>
+<thead><tr><th>Size (CR)</th><th>STS replicas</th><th>STS ready</th><th>CR ↔ STS</th><th>Status</th><th>Version</th><th>MySQL <code>configuration</code></th></tr></thead>
+<tbody><tr{{ if .PXCSTSMismatch }} class="dump-ev-warn"{{ end }}>
+<td>{{ .PXCSize }}</td>
+<td>{{ .PXCSTSReplicas }}</td>
+<td>{{ .PXCSTSReady }}</td>
+<td>{{ if .PXCSTSMismatch }}<span class="unsafe-flags-bad">{{ .PXCSTSNote }}</span>{{ else }}{{ .PXCSTSNote }}{{ end }}</td>
+<td>{{ .PXCStatus }}</td>
+<td>{{ .PXCVersion }}</td>
+<td class="pxc-cfg-cell"><pre class="pxc-cfg-snippet">{{ .PXCConfigSnippet }}</pre>{{ if ne .PXCConfigFullEscaped "" }}<textarea readonly hidden class="pxc-cfg-full-store" id="{{ .PXCConfigModalID }}-full">{{ .PXCConfigFullEscaped }}</textarea><div class="pxc-cfg-openwrap"><button type="button" class="pxc-cfg-btn" data-target="{{ .PXCConfigModalID }}">{{ if .PXCConfigTruncated }}Show full configuration{{ else }}View MySQL configuration{{ end }}</button></div>{{ end }}</td>
+</tr></tbody>
 </table>
 </td></tr>
 {{ end }}
