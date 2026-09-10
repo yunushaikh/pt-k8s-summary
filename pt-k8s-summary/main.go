@@ -586,6 +586,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		PSBackupRows          []jpreport.BackupRowTmpl
 		PGEmpty               bool
 		PGMeta                string
+		PGMainColspan         int
 		PGRows                []jpreport.PGRowTmpl
 		PGOperatorRows        []jpreport.PGOperatorRowTmpl
 		PGPodRows             []jpreport.PGPodRowTmpl
@@ -644,6 +645,7 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		PSBackupRows:          psBackupRows,
 		PGEmpty:               len(pgRows) == 0,
 		PGMeta:                pgMeta,
+		PGMainColspan:         9,
 		PGRows:                pgRows,
 		PGOperatorRows:        pgOperatorRows,
 		PGPodRows:             pgPodRows,

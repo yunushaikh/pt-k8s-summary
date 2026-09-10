@@ -1,6 +1,6 @@
 <dialog id="pxc-cfg-dialog" class="pxc-cfg-dialog">
 <div class="pxc-cfg-dialog-inner">
-<p class="pxc-cfg-dialog-title"><strong>MySQL configuration</strong> (<code>spec.pxc.configuration</code>)</p>
+<p class="pxc-cfg-dialog-title"><strong id="pxc-cfg-dialog-label">MySQL configuration</strong> (<code id="pxc-cfg-dialog-path">spec.pxc.configuration</code>)</p>
 <pre id="pxc-cfg-dialog-pre" class="pxc-cfg-dialog-pre"></pre>
 <button type="button" class="pxc-cfg-dialog-close">Close</button>
 </div>
@@ -49,6 +49,18 @@
 (function() {
   var cfgDlg = document.getElementById('pxc-cfg-dialog');
   var cfgPre = document.getElementById('pxc-cfg-dialog-pre');
+  var cfgLabel = document.getElementById('pxc-cfg-dialog-label');
+  var cfgPath = document.getElementById('pxc-cfg-dialog-path');
+  function openCfgDialog(btn) {
+    if (!cfgDlg || !cfgPre || !btn) return;
+    var id = btn.getAttribute('data-target');
+    var src = id ? document.getElementById(id + '-full') : null;
+    if (!src) return;
+    if (cfgLabel) cfgLabel.textContent = btn.getAttribute('data-cfg-label') || 'MySQL configuration';
+    if (cfgPath) cfgPath.textContent = btn.getAttribute('data-cfg-path') || 'spec.pxc.configuration';
+    cfgPre.textContent = src.value;
+    cfgDlg.showModal();
+  }
   var logDlg = document.getElementById('pod-log-dialog');
   var logPre = document.getElementById('pod-log-dialog-pre');
   var logTitle = document.getElementById('pod-log-dialog-title');
@@ -70,18 +82,12 @@
     if (t.closest) {
       var ccfg = t.closest('.pxc-cfg-btn');
       if (ccfg) {
-        if (!cfgDlg || !cfgPre) return;
-        var id = ccfg.getAttribute('data-target');
-        var src = id ? document.getElementById(id + '-full') : null;
-        if (src) { cfgPre.textContent = src.value; cfgDlg.showModal(); }
+        openCfgDialog(ccfg);
         return;
       }
     }
     if (t.classList && t.classList.contains('pxc-cfg-btn')) {
-      if (!cfgDlg || !cfgPre) return;
-      var id2 = t.getAttribute('data-target');
-      var src2 = id2 ? document.getElementById(id2 + '-full') : null;
-      if (src2) { cfgPre.textContent = src2.value; cfgDlg.showModal(); }
+      openCfgDialog(t);
       return;
     }
     if (t.classList && t.classList.contains('pxc-cfg-dialog-close')) {

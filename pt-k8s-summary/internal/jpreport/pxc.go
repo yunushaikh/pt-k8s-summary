@@ -110,12 +110,24 @@ type PXCRowTmpl struct {
 	HAProxySize          string
 	HAProxyStatus        string
 	HAProxyVersion       string
+	HAProxySTSReplicas   string
+	HAProxySTSReady      string
+	HAProxySTSNote       string
+	HAProxySTSMismatch   bool
 	ProxySQLSize         string
 	ProxySQLStatus       string
 	ProxySQLVersion      string
+	ProxySQLSTSReplicas  string
+	ProxySQLSTSReady     string
+	ProxySQLSTSNote      string
+	ProxySQLSTSMismatch  bool
 	PXCSize              string
 	PXCStatus            string
 	PXCVersion           string
+	PXCSTSReplicas       string
+	PXCSTSReady          string
+	PXCSTSNote           string
+	PXCSTSMismatch       bool
 	PXCConfigSnippet     string
 	PXCConfigFullEscaped string
 	PXCConfigTruncated   bool
@@ -256,6 +268,7 @@ func LoadPXCRowsFromDump(dumpRoot string, now time.Time, pods *PodLoader, cert *
 	if err != nil {
 		return nil, 0, err
 	}
+	stsIdx, _ := loadSTSIndex(dumpAbs)
 	paths, err := dumpfiles.FindListYAMLFiles(dumpAbs, dumpfiles.PXCClusterList)
 	if err != nil {
 		return nil, 0, err
@@ -275,7 +288,7 @@ func LoadPXCRowsFromDump(dumpRoot string, now time.Time, pods *PodLoader, cert *
 			if strings.TrimSpace(cr.Metadata.Name) == "" {
 				continue
 			}
-			row := buildPXCRowTmpl(cr, now, pods, dumpAbs, cert)
+			row := buildPXCRowTmpl(cr, now, pods, dumpAbs, cert, stsIdx)
 			if esc, id, ok := pxcCRYAMLEscapedForModal(data, cr, fileIdx, itemIdx); ok {
 				row.CRYAMLModalID = id
 				row.CRYAMLEscaped = esc
@@ -286,7 +299,7 @@ func LoadPXCRowsFromDump(dumpRoot string, now time.Time, pods *PodLoader, cert *
 	return rows, len(paths), nil
 }
 
-func buildPXCRowTmpl(cr *pxcClusterYAML, now time.Time, pods *PodLoader, dumpRoot string, cert *CertifiedImageCache) PXCRowTmpl {
+func buildPXCRowTmpl(cr *pxcClusterYAML, now time.Time, pods *PodLoader, dumpRoot string, cert *CertifiedImageCache, stsIdx stsIndex) PXCRowTmpl {
 	rs, since, rsClass := pxcReadyCondition(cr.Status.Conditions, now)
 	pmm := "no"
 	if cr.Spec.PMM.Enabled {
@@ -317,17 +330,28 @@ func buildPXCRowTmpl(cr *pxcClusterYAML, now time.Time, pods *PodLoader, dumpRoo
 		us = "—"
 	}
 	row.UpdateStrategy = us
+	ns := cr.Metadata.Namespace
+	name := cr.Metadata.Name
 	if hxOn && cr.Spec.HAProxy != nil {
 		row.HAProxySize, row.HAProxyStatus, row.HAProxyVersion = sidecarCols(cr.Spec.HAProxy.Size, cr.Status.HAProxy, cr.Spec.HAProxy.Image)
+		chk := stsIdx.checkComponent(ns, name, "haproxy", cr.Spec.HAProxy.Size)
+		row.HAProxySTSReplicas, row.HAProxySTSReady = chk.STSReplicas, chk.STSReady
+		row.HAProxySTSNote, row.HAProxySTSMismatch = chk.CompareNote, chk.Mismatch
 	}
 	if psOn && cr.Spec.ProxySQL != nil {
 		row.ProxySQLSize, row.ProxySQLStatus, row.ProxySQLVersion = sidecarCols(cr.Spec.ProxySQL.Size, cr.Status.ProxySQL, cr.Spec.ProxySQL.Image)
+		chk := stsIdx.checkComponent(ns, name, "proxysql", cr.Spec.ProxySQL.Size)
+		row.ProxySQLSTSReplicas, row.ProxySQLSTSReady = chk.STSReplicas, chk.STSReady
+		row.ProxySQLSTSNote, row.ProxySQLSTSMismatch = chk.CompareNote, chk.Mismatch
 	}
 	row.PXCSize, row.PXCStatus, row.PXCVersion = pxcCols(&cr.Spec.PXC, cr.Status.PXC)
+	{
+		chk := stsIdx.checkComponent(ns, name, "pxc", cr.Spec.PXC.Size)
+		row.PXCSTSReplicas, row.PXCSTSReady = chk.STSReplicas, chk.STSReady
+		row.PXCSTSNote, row.PXCSTSMismatch = chk.CompareNote, chk.Mismatch
+	}
 	row.PXCConfigSnippet, row.PXCConfigFullEscaped, row.PXCConfigTruncated, row.PXCConfigModalID =
 		formatPXCConfigurationForReport(cr.Metadata.Namespace, cr.Metadata.Name, cr.Spec.PXC.Configuration)
-	ns := cr.Metadata.Namespace
-	name := cr.Metadata.Name
 	if pods != nil {
 		if hxOn {
 			row.HAProxyPods = pods.podsForPerconaComponent(ns, name, "haproxy", now, dumpRoot)

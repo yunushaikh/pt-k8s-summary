@@ -73,6 +73,8 @@ items:
 		"events.k8s.io note",
 		"Pod/core-pod",
 		"Pod/everest-pod",
+		"all words must match",
+		"split(/\\s+/)",
 	} {
 		if !strings.Contains(h, want) {
 			t.Fatalf("missing %q in events HTML", want)

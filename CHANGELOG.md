@@ -7,13 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **Certified images on older operator releases:** Percona removed the certified-images tables from release notes before PXC 1.17.0 / PS 0.11.0, and every docs page carries a sidebar link with the same wording, so the old text match always hit it and reported "docs layout may have changed". Detection now keys on the section heading, so an unpublished list reads as a neutral note and only a genuinely unparsable section is flagged as an error. Images are marked **not checked** instead of a misleading red **no** when no list is available.
+## [0.8.3] - 2026-09-10
 
 ### Added
 
+- **PostgreSQL Leader / Secondary roles:** workload pods table shows **Role (pod)** from `postgres-operator.crunchydata.com/role` and **Role (Patroni)** from the latest Patroni heartbeat in instance logs, side by side, with mismatch highlighting. See [docs/FEATURES.md](docs/FEATURES.md).
+- **PostgreSQL Patroni CR config:** under each PG cluster, show `spec.patroni` timing (`syncPeriodSeconds`, `leaderLeaseDurationSeconds`, port) and `dynamicConfiguration.postgresql.parameters` (snippet + modal, same pattern as PXC MySQL configuration).
+- **PostgreSQL backup / restore inventory:** collapsible, filterable tables (collapsed by default), matching PXC backup inventory UX.
+- **Events filter (any text):** Kubernetes events filter matches any column; space-separated words are ANDed. PG cluster section points to the Kubernetes tab for events.
+- **PXC CR ↔ StatefulSet size check:** HAProxy / ProxySQL / PXC subsections compare CR `size` to StatefulSet `spec.replicas` (and show ready replicas), highlighting mismatches.
 - **Galera timeline coverage:** the `pt-galera-log-explainer` section now lists every PXC member log that was scanned, the time window it covers, and whether it contributed to the timeline. The tool omits logs it recognizes no events in, which previously made a quiet window look like a parsing failure.
+
+### Fixed
+
+- **Certified images on older operator releases:** Percona removed the certified-images tables from release notes before PXC 1.17.0 / PS 0.11.0, and every docs page carries a sidebar link with the same wording, so the old text match always hit it and reported "docs layout may have changed". Detection now keys on the section heading, so an unpublished list reads as a neutral note and only a genuinely unparsable section is flagged as an error. Images are marked **not checked** instead of a misleading red **no** when no list is available.
 
 ## [0.8.2] - 2026-07-16
 

@@ -36,6 +36,19 @@ type pgSpecYAML struct {
 	PMM             struct {
 		Enabled bool `yaml:"enabled"`
 	} `yaml:"pmm"`
+	Patroni *pgPatroniSpec `yaml:"patroni"`
+}
+
+// pgPatroniSpec is PerconaPGCluster spec.patroni (timing + dynamic postgresql.parameters).
+type pgPatroniSpec struct {
+	SyncPeriodSeconds          *int `yaml:"syncPeriodSeconds"`
+	LeaderLeaseDurationSeconds *int `yaml:"leaderLeaseDurationSeconds"`
+	Port                       *int `yaml:"port"`
+	DynamicConfiguration       struct {
+		PostgreSQL struct {
+			Parameters map[string]interface{} `yaml:"parameters"`
+		} `yaml:"postgresql"`
+	} `yaml:"dynamicConfiguration"`
 }
 
 type pgStatusYAML struct {
@@ -67,6 +80,15 @@ type PGRowTmpl struct {
 	PGBouncerCount   string
 	Age              string
 	PMMEnabled       string
+	// Patroni from spec.patroni (empty SyncPeriod means section omitted).
+	HasPatroni               bool
+	PatroniSyncPeriod        string
+	PatroniLeaderLease       string
+	PatroniPort              string
+	PatroniParamsSnippet     string
+	PatroniParamsFullEscaped string
+	PatroniParamsTruncated   bool
+	PatroniParamsModalID     string
 }
 
 const pgCRYAMLModalMaxBytes = 512 * 1024
@@ -198,7 +220,7 @@ func buildPGRowTmpl(cr *pgClusterYAML, now time.Time) PGRowTmpl {
 	if cr.Spec.PMM.Enabled {
 		pmm = "yes"
 	}
-	return PGRowTmpl{
+	row := PGRowTmpl{
 		Name:            strings.TrimSpace(cr.Metadata.Name),
 		Namespace:       strings.TrimSpace(cr.Metadata.Namespace),
 		CRVersion:       orDash(crVer),
@@ -209,6 +231,86 @@ func buildPGRowTmpl(cr *pgClusterYAML, now time.Time) PGRowTmpl {
 		PGBouncerCount:  pgComponentCount(cr.Status.PGBouncer.Ready, cr.Status.PGBouncer.Size),
 		Age:             age,
 		PMMEnabled:      pmm,
+	}
+	fillPGPatroni(&row, cr.Spec.Patroni)
+	return row
+}
+
+const pgPatroniParamsSnippetMaxChars = 120
+const pgPatroniParamsSnippetMaxKeys = 3
+
+func fillPGPatroni(row *PGRowTmpl, p *pgPatroniSpec) {
+	if row == nil || p == nil {
+		return
+	}
+	row.HasPatroni = true
+	row.PatroniSyncPeriod = pgIntPtrOrDash(p.SyncPeriodSeconds)
+	row.PatroniLeaderLease = pgIntPtrOrDash(p.LeaderLeaseDurationSeconds)
+	row.PatroniPort = pgIntPtrOrDash(p.Port)
+	row.PatroniParamsModalID = "pg-patroni-params-" + sanitizeModalFragment(row.Namespace) + "-" + sanitizeModalFragment(row.Name)
+	params := p.DynamicConfiguration.PostgreSQL.Parameters
+	if len(params) == 0 {
+		row.PatroniParamsSnippet = "—"
+		return
+	}
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	lines := make([]string, 0, len(keys))
+	snippetParts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		v := formatYAMLScalar(params[k])
+		lines = append(lines, k+" = "+v)
+		snippetParts = append(snippetParts, k+"="+v)
+	}
+	full := strings.Join(lines, "\n")
+	row.PatroniParamsFullEscaped = htmltemplate.HTMLEscapeString(full)
+	snipKeys := snippetParts
+	if len(snipKeys) > pgPatroniParamsSnippetMaxKeys {
+		snipKeys = snipKeys[:pgPatroniParamsSnippetMaxKeys]
+		row.PatroniParamsTruncated = true
+	}
+	snip := strings.Join(snipKeys, ", ")
+	if len(snip) > pgPatroniParamsSnippetMaxChars {
+		snip = snip[:pgPatroniParamsSnippetMaxChars-1] + "…"
+		row.PatroniParamsTruncated = true
+	}
+	if len(snippetParts) > len(snipKeys) {
+		snip += fmt.Sprintf(" … (+%d more)", len(snippetParts)-len(snipKeys))
+		row.PatroniParamsTruncated = true
+	}
+	row.PatroniParamsSnippet = snip
+}
+
+func pgIntPtrOrDash(p *int) string {
+	if p == nil {
+		return "—"
+	}
+	return strconv.Itoa(*p)
+}
+
+func formatYAMLScalar(v interface{}) string {
+	switch t := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return t
+	case bool:
+		return strconv.FormatBool(t)
+	case int:
+		return strconv.Itoa(t)
+	case int64:
+		return strconv.FormatInt(t, 10)
+	case float64:
+		// yaml.v3 decodes numbers as float64
+		if t == float64(int64(t)) {
+			return strconv.FormatInt(int64(t), 10)
+		}
+		return strconv.FormatFloat(t, 'g', -1, 64)
+	default:
+		return fmt.Sprint(t)
 	}
 }
 

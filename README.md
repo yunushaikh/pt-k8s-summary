@@ -17,7 +17,7 @@ The report summarizes nodes, Percona XtraDB Cluster (PXC), Percona Server for My
 
 ## Releases
 
-- [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) — pre-built binaries and `SHA256SUMS` (latest: **v0.8.0**)
+- [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) — pre-built binaries and `SHA256SUMS` (latest: **v0.8.3**)
 - [CHANGELOG.md](CHANGELOG.md) — version history and release notes
 
 Check your installed version: `pt-k8s-summary -version`
