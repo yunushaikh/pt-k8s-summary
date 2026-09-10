@@ -88,6 +88,23 @@ Update this file whenever a feature is added or its sources change (see project 
 
 ---
 
+## Feature: Certified images vs `pods.yaml` (PXC / PS)
+
+- **UI:** PXC or Percona Server tab → under each cluster → **Container images vs certified images** table (**Matches certified list**: yes / no / not checked).
+- **Status:** shipped (improved in v0.8.3 for unpublished lists)
+- **Primary source (cluster images):** `pods.yaml` container images for the cluster (labels `app.kubernetes.io/instance` + component).
+- **Secondary source (certified list):** HTTP fetch of that operator’s release notes for `spec.crVersion`:
+  - PXC: `…/Kubernetes-Operator-for-PXC-RN{crVersion}.html#percona-certified-images`
+  - PS: `…/Kubernetes-Operator-for-PS-RN{crVersion}.html#percona-certified-images`
+  - Section must be a real heading/`id="percona-certified-images"` (sidebar nav link alone does **not** count).
+- **When a list exists (typical):** PXC **1.17.0+**, PS **0.10.0+** — compare normalized `percona/…:tag` refs → **yes** / **no**.
+- **When no list is published:** PXC **≤ 1.16.x**, PS **≤ 0.9.x** (page may 200 OK but has no section) → muted “does not publish a certified images list…” note; all rows **not checked**.
+- **Other “not checked” cases:** `-certified-images=false`; missing `spec.crVersion`; HTTP failure (e.g. future version RN **404**); section present but no `percona/…` refs parsed (flagged as a docs/layout error, not as unpublished).
+- **Comparison:** yes when a list was loaded; otherwise no comparison is invented.
+- **Caveats:** Needs network unless disabled. Registry prefixes like `docker.io/` are normalized away. Tag must match the docs table exactly.
+
+---
+
 ## Existing notes (fill in over time)
 
 Older features may not yet have full entries. Prefer adding an entry when you next touch that code path rather than backfilling everything at once.

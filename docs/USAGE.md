@@ -48,8 +48,10 @@ pt-k8s-summary -version
 | `-nodes` | Path to `nodes.yaml` (default: auto-detect Node list anywhere under the dump) |
 | `-out` | Output HTML path |
 | `-galera-since` | RFC3339 timestamp for pt-galera-log-explainer `--since=` |
-| `-certified-images` | Fetch/compare Percona certified images (default: `true`) |
+| `-certified-images` | Fetch/compare Percona certified images from release notes for `spec.crVersion` (default: `true`). Offline: `false` → rows show **not checked**. |
 | `-layout` | Report layout: `grouped` (default, tabbed Kubernetes / PXC / Percona Server / PostgreSQL) or `classic` (linear) |
+
+**Certified images availability:** Percona publishes the “Percona certified images” table on PXC operator notes from **1.17.0+** and PS from **0.10.0+**. Older releases (PXC ≤ 1.16.x, PS ≤ 0.9.x) have no table — the report shows a muted note and **not checked**, not a red **no**. A missing/404 release-notes page (e.g. not-yet-published version) is treated as a fetch error with the same **not checked** cells. Details: [FEATURES.md](FEATURES.md).
 
 **Positional argument:** cluster dump archive (`.tar.gz` or `.tgz`). Use either the archive **or** `-dump`, not both.
 

@@ -20,7 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Certified images on older operator releases:** Percona removed the certified-images tables from release notes before PXC 1.17.0 / PS 0.11.0, and every docs page carries a sidebar link with the same wording, so the old text match always hit it and reported "docs layout may have changed". Detection now keys on the section heading, so an unpublished list reads as a neutral note and only a genuinely unparsable section is flagged as an error. Images are marked **not checked** instead of a misleading red **no** when no list is available.
+- **Certified images when Percona has no list for that release:** Release notes for older operators often have **no** “Percona certified images” table (PXC **≤ 1.16.x**, PS **≤ 0.9.x**). Lists appear from PXC **1.17.0+** and PS **0.10.0+**. Every docs page still has a sidebar link with the same wording, so older matching treated that as a parse failure (“docs layout may have changed”). Detection now requires the real section heading/`#percona-certified-images` anchor.
+  - **Unpublished list:** muted note that Percona does not publish a list for that `spec.crVersion`; image rows show **not checked** (not a red **no**).
+  - **Fetch disabled** (`-certified-images=false`) or **network/404/parse error:** still **not checked**, with an explicit note so it is not confused with a failed certification check.
+  - **Published list loaded:** rows show **yes** / **no** as before. See [docs/FEATURES.md](docs/FEATURES.md).
 
 ## [0.8.2] - 2026-07-16
 
