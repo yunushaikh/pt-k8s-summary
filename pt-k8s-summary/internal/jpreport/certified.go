@@ -12,7 +12,7 @@ import (
 
 // errCertifiedListUnpublished means the release notes page loaded fine but carries no
 // certified-images section at all. Percona dropped those tables from older releases
-// (PXC before 1.17.0, PS before 0.11.0), so there is nothing to compare against.
+// (PXC before 1.17.0, PS before 0.10.0), so there is nothing to compare against.
 var errCertifiedListUnpublished = errors.New("Percona does not publish a certified images list for this operator release, so images cannot be compared")
 
 // CertifiedImageCache avoids repeated HTTP requests when several clusters share the same spec.crVersion.
