@@ -76,6 +76,19 @@ Update this file whenever a feature is added or its sources change (see project 
 
 ---
 
+## Feature: PXC previous status transitions
+
+- **UI:** PXC tab → under each cluster row → **Previous transitions** (time, type, status, reason, message), oldest first. `error` and `ErrorReconcile` are highlighted. Every unique condition is listed (no row cap). Six or fewer rows start expanded; more than six use the same collapsed summary as backups (**expand to view**, with the error count in the summary).
+- **Status:** shipped (since v0.8.4)
+- **Primary source:** PerconaXtraDBCluster `status.conditions` (`lastTransitionTime`, `type`, `status`, `reason`, `message`) from the cluster list YAML.
+- **Secondary / fallback:** none. The full document is still the CR YAML modal.
+- **Comparison:** no
+- **Duplication:** exact copies (same time, type, status, reason, and message) are dropped. The current `ready` condition is omitted here because the Ready column already shows its status and time.
+- **If missing:** subsection omitted when no conditions remain after those drops.
+- **Caveats:** This is the operator’s stored condition list, not a reconstructed event history. Older `error` entries can remain while Ready is still True.
+
+---
+
 ## Feature: PXC CR size ↔ StatefulSet replicas cross-check
 
 - **UI:** PXC tab → HAProxy / ProxySQL / PXC subsections — columns **Size (CR)**, **STS replicas**, **STS ready**, **CR ↔ STS**.

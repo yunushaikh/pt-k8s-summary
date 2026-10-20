@@ -27,6 +27,30 @@
 <td>{{ if .UnsafeFlagsOK }}<span class="unsafe-flags-ok">NO</span>{{ else }}<span class="unsafe-flags-bad">{{ .UnsafeFlagsEscaped }}</span>{{ end }}</td>
 <td>{{ .UpdateStrategy }}</td>
 </tr>
+{{ if .Transitions }}
+<tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
+<details class="nodes-coll" {{ if le (len .Transitions) 6 }}open{{ end }}>
+<summary class="nodes-coll-sum" aria-label="Expand or collapse previous PXC transitions"><span class="nodes-coll-exp" aria-hidden="true"></span><span class="nodes-coll-sum-body"><strong class="nodes-coll-sum-h">Previous transitions</strong><span class="nodes-coll-sum-meta">{{ len .Transitions }} {{ if eq (len .Transitions) 1 }}transition{{ else }}transitions{{ end }}{{ if gt .TransitionsErrorCount 0 }} · {{ .TransitionsErrorCount }} {{ if eq .TransitionsErrorCount 1 }}error{{ else }}errors{{ end }}{{ end }}{{ if gt (len .Transitions) 6 }} · expand to view{{ else }} · shown{{ end }}</span></span></summary>
+<div class="nodes-coll-inner">
+<p class="meta">Every unique <code>status.conditions</code> entry, oldest first. Nothing is truncated. More than 6 rows stay collapsed. Exact duplicates are dropped. The current <code>ready</code> condition stays in the Ready column.</p>
+<table class="pxc-inner-table">
+<thead><tr><th>Time</th><th>Type</th><th>Status</th><th>Reason</th><th>Message</th></tr></thead>
+<tbody>
+{{ range .Transitions }}
+<tr>
+<td class="pxc-cr-name-cell"><code>{{ .Time }}</code></td>
+<td>{{ if .IsError }}<span class="unsafe-flags-bad">{{ .Type }}</span>{{ else }}{{ .Type }}{{ end }}</td>
+<td>{{ .Status }}</td>
+<td>{{ .Reason }}</td>
+<td>{{ .Message }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+</div>
+</details>
+</td></tr>
+{{ end }}
 <tr><td colspan="{{ $.PXCMainColspan }}" class="pxc-comp-wrap">
 <h3 class="pxc-subsection-title">Container images vs certified images</h3>
 <p class="meta">Compared using <code>spec.crVersion</code> <strong>{{ .CRVersion }}</strong> against the <a href="{{ .CertifiedDocURL }}" target="_blank" rel="noopener noreferrer">Percona certified images</a> list for that operator release.{{ if .CertifiedFetchErrEscaped }}<br><span class="{{ if .CertifiedListUnpublished }}status-muted{{ else }}status-bad{{ end }}">{{ .CertifiedFetchErrEscaped }}</span>{{ end }}</p>

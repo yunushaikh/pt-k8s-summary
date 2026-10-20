@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-10-20
+
+### Added
+
+- **PXC previous transitions:** under each cluster, list every unique `status.conditions` entry oldest-first (type, status, reason, message). Exact duplicates are dropped, and the current `ready` condition stays only in the Ready column. `error` / `ErrorReconcile` rows are highlighted. More than 6 rows are collapsed like backups. See [docs/FEATURES.md](docs/FEATURES.md).
+
 ## [0.8.3] - 2026-09-10
 
 ### Added

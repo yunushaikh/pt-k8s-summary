@@ -31,13 +31,13 @@ type pxcClusterYAML struct {
 }
 
 type pxcSpecYAML struct {
-	CRVersion       string                 `yaml:"crVersion"`
-	UpdateStrategy  string                 `yaml:"updateStrategy"`
-	PMM             struct{ Enabled bool } `yaml:"pmm"`
-	HAProxy         *pxcHAProxySpec        `yaml:"haproxy"`
-	ProxySQL        *pxcProxySQLSpec      `yaml:"proxysql"`
-	PXC             pxcPodSpec             `yaml:"pxc"`
-	UnsafeFlags     map[string]interface{} `yaml:"unsafeFlags"`
+	CRVersion      string                 `yaml:"crVersion"`
+	UpdateStrategy string                 `yaml:"updateStrategy"`
+	PMM            struct{ Enabled bool } `yaml:"pmm"`
+	HAProxy        *pxcHAProxySpec        `yaml:"haproxy"`
+	ProxySQL       *pxcProxySQLSpec       `yaml:"proxysql"`
+	PXC            pxcPodSpec             `yaml:"pxc"`
+	UnsafeFlags    map[string]interface{} `yaml:"unsafeFlags"`
 }
 
 type pxcHAProxySpec struct {
@@ -59,16 +59,29 @@ type pxcPodSpec struct {
 }
 
 type pxcStatusYAML struct {
-	Conditions []pxcCRCondition         `yaml:"conditions"`
-	HAProxy    *pxcComponentStatusYAML   `yaml:"haproxy"`
-	ProxySQL   *pxcComponentStatusYAML   `yaml:"proxysql"`
-	PXC        *pxcPXCStatusYAML         `yaml:"pxc"`
+	Conditions []pxcCRCondition        `yaml:"conditions"`
+	HAProxy    *pxcComponentStatusYAML `yaml:"haproxy"`
+	ProxySQL   *pxcComponentStatusYAML `yaml:"proxysql"`
+	PXC        *pxcPXCStatusYAML       `yaml:"pxc"`
 }
 
 type pxcCRCondition struct {
 	Type               string `yaml:"type"`
 	Status             string `yaml:"status"`
+	Reason             string `yaml:"reason"`
+	Message            string `yaml:"message"`
 	LastTransitionTime string `yaml:"lastTransitionTime"`
+}
+
+// PXCTransitionTmpl is one previous status.conditions entry, oldest first.
+// The current ready condition is omitted; it is already the Ready column.
+type PXCTransitionTmpl struct {
+	Time    string
+	Type    string
+	Status  string
+	Reason  string
+	Message string
+	IsError bool
 }
 
 type pxcComponentStatusYAML struct {
@@ -92,53 +105,55 @@ type ImageCertRowTmpl struct {
 }
 
 type PXCRowTmpl struct {
-	Name                 string
-	Namespace            string
-	CRYAMLModalID        string // id base for textarea (suffix -full); empty when YAML unavailable
-	CRYAMLEscaped        string // HTML-escaped YAML from perconaxtradbclusters…yaml (one list item)
-	CRVersion            string
-	Created              string
-	ReadyStatus      string
-	ReadySince       string
-	ReadyStatusClass string
-	PMMEnabled           string
-	UnsafeFlagsOK        bool
-	UnsafeFlagsEscaped   string
-	UpdateStrategy       string
-	HAProxyEnabled       bool
-	ProxySQLEnabled      bool
-	HAProxySize          string
-	HAProxyStatus        string
-	HAProxyVersion       string
-	HAProxySTSReplicas   string
-	HAProxySTSReady      string
-	HAProxySTSNote       string
-	HAProxySTSMismatch   bool
-	ProxySQLSize         string
-	ProxySQLStatus       string
-	ProxySQLVersion      string
-	ProxySQLSTSReplicas  string
-	ProxySQLSTSReady     string
-	ProxySQLSTSNote      string
-	ProxySQLSTSMismatch  bool
-	PXCSize              string
-	PXCStatus            string
-	PXCVersion           string
-	PXCSTSReplicas       string
-	PXCSTSReady          string
-	PXCSTSNote           string
-	PXCSTSMismatch       bool
-	PXCConfigSnippet     string
-	PXCConfigFullEscaped string
-	PXCConfigTruncated   bool
-	PXCConfigModalID     string
-	HAProxyPods                []PXCPodRowTmpl
-	ProxySQLPods               []PXCPodRowTmpl
-	PXCPods                    []PXCPodRowTmpl
-	CertifiedDocURL            string
-	CertifiedFetchErrEscaped   string
-	CertifiedListUnpublished   bool
-	ImageCertRows              []ImageCertRowTmpl
+	Name                     string
+	Namespace                string
+	CRYAMLModalID            string // id base for textarea (suffix -full); empty when YAML unavailable
+	CRYAMLEscaped            string // HTML-escaped YAML from perconaxtradbclusters…yaml (one list item)
+	CRVersion                string
+	Created                  string
+	ReadyStatus              string
+	ReadySince               string
+	ReadyStatusClass         string
+	Transitions              []PXCTransitionTmpl
+	TransitionsErrorCount    int
+	PMMEnabled               string
+	UnsafeFlagsOK            bool
+	UnsafeFlagsEscaped       string
+	UpdateStrategy           string
+	HAProxyEnabled           bool
+	ProxySQLEnabled          bool
+	HAProxySize              string
+	HAProxyStatus            string
+	HAProxyVersion           string
+	HAProxySTSReplicas       string
+	HAProxySTSReady          string
+	HAProxySTSNote           string
+	HAProxySTSMismatch       bool
+	ProxySQLSize             string
+	ProxySQLStatus           string
+	ProxySQLVersion          string
+	ProxySQLSTSReplicas      string
+	ProxySQLSTSReady         string
+	ProxySQLSTSNote          string
+	ProxySQLSTSMismatch      bool
+	PXCSize                  string
+	PXCStatus                string
+	PXCVersion               string
+	PXCSTSReplicas           string
+	PXCSTSReady              string
+	PXCSTSNote               string
+	PXCSTSMismatch           bool
+	PXCConfigSnippet         string
+	PXCConfigFullEscaped     string
+	PXCConfigTruncated       bool
+	PXCConfigModalID         string
+	HAProxyPods              []PXCPodRowTmpl
+	ProxySQLPods             []PXCPodRowTmpl
+	PXCPods                  []PXCPodRowTmpl
+	CertifiedDocURL          string
+	CertifiedFetchErrEscaped string
+	CertifiedListUnpublished bool
+	ImageCertRows            []ImageCertRowTmpl
 }
 
 const pxcConfigurationMaxLines = 5
@@ -312,17 +327,26 @@ func buildPXCRowTmpl(cr *pxcClusterYAML, now time.Time, pods *PodLoader, dumpRoo
 	if crVer == "" {
 		crVer = "—"
 	}
+	transitions := pxcPreviousTransitions(cr.Status.Conditions)
+	errN := 0
+	for _, tr := range transitions {
+		if tr.IsError {
+			errN++
+		}
+	}
 	row := PXCRowTmpl{
-		Name:            cr.Metadata.Name,
-		Namespace:       cr.Metadata.Namespace,
-		CRVersion:       crVer,
-		Created:          cr.Metadata.CreationTimestamp,
-		ReadyStatus:      rs,
-		ReadySince:       since,
-		ReadyStatusClass: rsClass,
-		PMMEnabled:       pmm,
-		HAProxyEnabled:  hxOn,
-		ProxySQLEnabled: psOn,
+		Name:                  cr.Metadata.Name,
+		Namespace:             cr.Metadata.Namespace,
+		CRVersion:             crVer,
+		Created:               cr.Metadata.CreationTimestamp,
+		ReadyStatus:           rs,
+		ReadySince:            since,
+		ReadyStatusClass:      rsClass,
+		Transitions:           transitions,
+		TransitionsErrorCount: errN,
+		PMMEnabled:            pmm,
+		HAProxyEnabled:        hxOn,
+		ProxySQLEnabled:       psOn,
 	}
 	row.UnsafeFlagsOK, row.UnsafeFlagsEscaped = unsafeFlagsCell(cr.Spec.UnsafeFlags)
 	us := strings.TrimSpace(cr.Spec.UpdateStrategy)
@@ -471,6 +495,91 @@ func pxcReadyCondition(conds []pxcCRCondition, now time.Time) (status, since, st
 		}
 	}
 	return
+}
+
+// pxcPreviousTransitions lists status.conditions oldest-first.
+// Exact duplicates (same time, type, status, reason, and message) are dropped.
+// The current ready condition is omitted because the Ready column already shows it.
+func pxcPreviousTransitions(conds []pxcCRCondition) []PXCTransitionTmpl {
+	type keyed struct {
+		c         pxcCRCondition
+		t         time.Time
+		ok        bool
+		idx       int
+		skipReady bool
+	}
+	items := make([]keyed, 0, len(conds))
+	seen := make(map[string]struct{}, len(conds))
+	readyAt := -1
+	var readyTime time.Time
+	for i := range conds {
+		c := conds[i]
+		c.Type = strings.TrimSpace(c.Type)
+		c.Status = strings.TrimSpace(c.Status)
+		c.Reason = strings.TrimSpace(c.Reason)
+		c.Message = strings.Join(strings.Fields(c.Message), " ")
+		c.LastTransitionTime = strings.TrimSpace(c.LastTransitionTime)
+		key := strings.ToLower(c.Type) + "\x00" + strings.ToLower(c.Status) + "\x00" + c.Reason + "\x00" + c.Message + "\x00" + c.LastTransitionTime
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		var ts time.Time
+		ok := false
+		if c.LastTransitionTime != "" {
+			if parsed, err := time.Parse(time.RFC3339, c.LastTransitionTime); err == nil {
+				ts = parsed
+				ok = true
+			}
+		}
+		items = append(items, keyed{c: c, t: ts, ok: ok, idx: i})
+		pos := len(items) - 1
+		if strings.EqualFold(c.Type, "ready") && ok && (readyAt < 0 || !ts.Before(readyTime)) {
+			readyAt = pos
+			readyTime = ts
+		}
+	}
+	if readyAt >= 0 {
+		items[readyAt].skipReady = true
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		switch {
+		case items[i].ok && items[j].ok:
+			if !items[i].t.Equal(items[j].t) {
+				return items[i].t.Before(items[j].t)
+			}
+			return items[i].idx < items[j].idx
+		case items[i].ok:
+			return true
+		case items[j].ok:
+			return false
+		default:
+			return items[i].idx < items[j].idx
+		}
+	})
+	out := make([]PXCTransitionTmpl, 0, len(items))
+	for _, it := range items {
+		if it.skipReady {
+			continue
+		}
+		tm := it.c.LastTransitionTime
+		if tm == "" {
+			tm = "—"
+		}
+		typ := it.c.Type
+		if typ == "" {
+			typ = "—"
+		}
+		out = append(out, PXCTransitionTmpl{
+			Time:    tm,
+			Type:    typ,
+			Status:  orDash(it.c.Status),
+			Reason:  orDash(it.c.Reason),
+			Message: orDash(it.c.Message),
+			IsError: strings.EqualFold(it.c.Type, "error") || strings.EqualFold(it.c.Reason, "ErrorReconcile"),
+		})
+	}
+	return out
 }
 
 func haproxySpecEnabled(s *pxcHAProxySpec) bool {
