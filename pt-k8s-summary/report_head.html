@@ -275,10 +275,51 @@ h3.addl-h3 {
   margin: 0 0 0.4rem;
 }
 .pxc-cfg-openwrap { margin-top: 0.35rem; }
+/* Dump inventory + YAML browser */
+.dump-inv-wrap { margin: 1.1rem 0 0; }
+.dump-inv-wrap h3 { font-size: 0.9rem; margin: 0 0 0.35rem; color: var(--ink-soft); }
+.dump-inv-note { font-size: 0.78rem; color: var(--muted); margin: 0 0 0.55rem; }
+.dump-inv-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.dump-inv-table th, .dump-inv-table td { border: 1px solid var(--border); padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+.dump-inv-table th { background: var(--th-bg); font-weight: 600; }
+.dump-inv-status { font-weight: 650; text-transform: lowercase; }
+.dump-inv-status.found { color: var(--ok); }
+.dump-inv-status.missing { color: var(--muted); }
+.dump-inv-status.unreadable { color: var(--warn); }
+.dump-inv-actions { margin: 0.75rem 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.dump-yaml-btn { font: inherit; font-size: 0.82rem; font-weight: 600; color: #fff; background: linear-gradient(150deg, #0f766e 0%, #14b8a6 100%); border: 1px solid #0f766e; border-radius: 7px; padding: 0.4rem 0.85rem; cursor: pointer; }
+.dump-yaml-btn:hover { filter: brightness(1.05); }
+.dump-yaml-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.dump-yaml-modal[aria-hidden="true"] { display: none; }
+.dump-yaml-modal { position: fixed; inset: 0; z-index: 80; background: rgba(15, 23, 42, 0.5); display: flex; align-items: stretch; justify-content: center; padding: 1rem; }
+.dump-yaml-dlg { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); width: min(1100px, 100%); max-height: calc(100vh - 2rem); display: flex; flex-direction: column; overflow: hidden; }
+.dump-yaml-dlg-h { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+.dump-yaml-dlg-t { margin: 0; font-size: 1rem; }
+.dump-yaml-dlg-x { font: inherit; font-size: 1.4rem; line-height: 1; border: none; background: none; cursor: pointer; color: var(--muted); padding: 0.1rem 0.35rem; }
+.dump-yaml-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem 0.85rem; align-items: center; padding: 0.55rem 1rem; border-bottom: 1px solid var(--border); background: var(--row-alt); }
+.dump-yaml-toolbar label { font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 0.35rem; }
+.dump-yaml-toolbar input { min-width: min(16rem, 100%); padding: 0.32rem 0.5rem; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; }
+.dump-yaml-meta { font-size: 0.72rem; color: var(--muted); }
+.dump-yaml-body { display: grid; grid-template-columns: minmax(12rem, 22%) 1fr; min-height: 0; flex: 1; }
+.dump-yaml-tree { overflow: auto; border-right: 1px solid var(--border); padding: 0.5rem 0.35rem; background: #fafbfc; font-size: 0.78rem; }
+.dump-yaml-tree details { margin: 0.15rem 0; }
+.dump-yaml-tree summary { cursor: pointer; font-weight: 650; color: var(--ink-soft); padding: 0.15rem 0.35rem; }
+.dump-yaml-tree button.dump-yaml-file { display: block; width: 100%; text-align: left; font: inherit; font-size: 0.76rem; background: none; border: none; padding: 0.28rem 0.45rem; border-radius: 5px; cursor: pointer; color: var(--accent-2); word-break: break-all; }
+.dump-yaml-tree button.dump-yaml-file:hover, .dump-yaml-tree button.dump-yaml-file.active { background: #ecfeff; color: #0f766e; }
+.dump-yaml-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.dump-yaml-path { margin: 0; padding: 0.45rem 0.85rem; font-size: 0.78rem; border-bottom: 1px solid var(--border); color: var(--ink-soft); word-break: break-all; }
+.dump-yaml-pre { margin: 0; padding: 0.75rem 0.9rem; overflow: auto; flex: 1; font-family: var(--mono); font-size: 0.78rem; white-space: pre-wrap; background: #fff; }
+.dump-yaml-pre mark { background: #fef08a; color: inherit; padding: 0; }
+.dump-yaml-store { display: none !important; }
+@media (max-width: 720px) {
+  .dump-yaml-body { grid-template-columns: 1fr; }
+  .dump-yaml-tree { max-height: 30vh; border-right: none; border-bottom: 1px solid var(--border); }
+}
 @media print {
   body { background: #fff; }
   .report-shell { max-width: none; padding: 0.5rem; }
   .report-card, .report-section, .report-subsection, .nodes-coll, table.pxc-inner-table { break-inside: avoid; }
+  .dump-yaml-modal { display: none !important; }
 }
 </style>
 </head>
@@ -338,5 +379,121 @@ h3.addl-h3 {
     if(ev.key==="Escape" && mod.getAttribute("aria-hidden")==="false") closeE();
   });
 })();</script>
+{{ end }}
+{{ if .Proc.DumpInventory }}
+<div class="dump-inv-wrap">
+<h3>Dump inventory</h3>
+<p class="dump-inv-note">Expected <code>pt-k8s-debug-collector</code> exports under this dump. Missing or unreadable files also emit <code>warning:</code> lines when the HTML report is generated.{{ if .Proc.DumpInventoryGaps }} <strong>{{ .Proc.DumpInventoryGaps }} gap(s)</strong> in this dump.{{ end }}</p>
+<table class="dump-inv-table">
+<thead><tr><th>Artifact</th><th>Status</th><th>Path</th><th>Note</th></tr></thead>
+<tbody>
+{{ range .Proc.DumpInventory }}
+<tr>
+<td>{{ .Label }}</td>
+<td><span class="dump-inv-status {{ .Status }}">{{ .Status }}</span></td>
+<td>{{ if .RelPath }}<code>{{ .RelPath }}</code>{{ else }}—{{ end }}</td>
+<td>{{ if .Note }}{{ .Note }}{{ else }}—{{ end }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+<div class="dump-inv-actions">
+<button type="button" class="dump-yaml-btn" id="dump-yaml-open"{{ if not .Proc.DumpBrowserFiles }} disabled title="No YAML exports embedded"{{ end }}>Browse dump YAML</button>
+<span class="dump-inv-note" style="margin:0">In-report browser with file tree and in-file search (large files may be omitted or truncated).</span>
+</div>
+</div>
+{{ if .Proc.DumpBrowserFiles }}
+{{ range .Proc.DumpBrowserFiles }}
+{{ if not .Omitted }}<pre class="dump-yaml-store" id="{{ .ID }}-body" data-rel="{{ .RelPath }}" data-truncated="{{ if .Truncated }}1{{ else }}0{{ end }}">{{ .ContentEscaped }}</pre>{{ end }}
+{{ if .Omitted }}<pre class="dump-yaml-store" id="{{ .ID }}-body" data-rel="{{ .RelPath }}" data-omitted="1" data-note="{{ .Note }}"></pre>{{ end }}
+{{ end }}
+<div id="dump-yaml-modal" class="dump-yaml-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="dump-yaml-title">
+<div class="dump-yaml-dlg" role="document">
+<div class="dump-yaml-dlg-h"><h3 class="dump-yaml-dlg-t" id="dump-yaml-title">Dump YAML browser</h3><button type="button" class="dump-yaml-dlg-x" data-dump-yaml-x="" aria-label="Close">×</button></div>
+<div class="dump-yaml-toolbar">
+<label>Search in file <input type="search" id="dump-yaml-search" placeholder="Match text in the open file…" autocomplete="off" spellcheck="false"></label>
+<span class="dump-yaml-meta" id="dump-yaml-search-meta"></span>
+</div>
+<div class="dump-yaml-body">
+<nav class="dump-yaml-tree" aria-label="Dump YAML files">
+{{ range .Proc.DumpBrowserGroups }}
+<details open>
+<summary><code>{{ .Dir }}</code></summary>
+{{ range .Files }}
+<button type="button" class="dump-yaml-file" data-dump-yaml-id="{{ .ID }}" data-dump-yaml-rel="{{ .RelPath }}">{{ .RelPath }}{{ if .Omitted }} · omitted{{ else if .Truncated }} · truncated{{ end }}</button>
+{{ end }}
+</details>
+{{ end }}
+</nav>
+<div class="dump-yaml-pane">
+<p class="dump-yaml-path" id="dump-yaml-path">Select a file</p>
+<pre class="dump-yaml-pre" id="dump-yaml-pre" tabindex="0"></pre>
+</div>
+</div>
+</div>
+</div>
+<script>(function(){
+  var mod=document.getElementById("dump-yaml-modal");
+  var openBtn=document.getElementById("dump-yaml-open");
+  var pre=document.getElementById("dump-yaml-pre");
+  var pathEl=document.getElementById("dump-yaml-path");
+  var search=document.getElementById("dump-yaml-search");
+  var meta=document.getElementById("dump-yaml-search-meta");
+  if(!mod||!openBtn||!pre||!pathEl)return;
+  var rawText="";
+  var activeBtn=null;
+  function closeM(){ mod.setAttribute("aria-hidden","true"); }
+  function openM(){ mod.setAttribute("aria-hidden","false"); if(search) search.focus(); }
+  function escHtml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function render(){
+    var q=(search&&search.value||"").trim();
+    if(!rawText){ pre.textContent=""; if(meta) meta.textContent=""; return; }
+    if(!q){ pre.textContent=rawText; if(meta) meta.textContent=""; return; }
+    var lower=rawText.toLowerCase();
+    var ql=q.toLowerCase();
+    var count=0; var i=0; var out="";
+    while(i<rawText.length){
+      var hit=lower.indexOf(ql,i);
+      if(hit<0){ out+=escHtml(rawText.slice(i)); break; }
+      out+=escHtml(rawText.slice(i,hit));
+      out+="<mark>"+escHtml(rawText.slice(hit,hit+q.length))+"</mark>";
+      count++; i=hit+q.length;
+    }
+    pre.innerHTML=out;
+    if(meta) meta.textContent=count+" match"+(count===1?"":"es");
+  }
+  function showFile(id, rel, btn){
+    var stash=document.getElementById(id+"-body");
+    if(activeBtn) activeBtn.classList.remove("active");
+    activeBtn=btn||null;
+    if(activeBtn) activeBtn.classList.add("active");
+    pathEl.innerHTML="<code>"+escHtml(rel||"")+"</code>";
+    if(!stash){ rawText=""; pre.textContent="(file not embedded)"; return; }
+    if(stash.getAttribute("data-omitted")==="1"){
+      rawText="";
+      pre.textContent=stash.getAttribute("data-note")||"Omitted from this report.";
+      if(meta) meta.textContent="";
+      return;
+    }
+    rawText=stash.textContent||"";
+    if(search) search.value="";
+    render();
+  }
+  openBtn.addEventListener("click", openM);
+  mod.querySelectorAll("[data-dump-yaml-x]").forEach(function(el){ el.addEventListener("click", closeM); });
+  mod.addEventListener("click", function(ev){ if(ev.target===mod) closeM(); });
+  document.addEventListener("keydown", function(ev){
+    if(ev.key==="Escape" && mod.getAttribute("aria-hidden")==="false") closeM();
+  });
+  mod.querySelectorAll(".dump-yaml-file").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      showFile(btn.getAttribute("data-dump-yaml-id"), btn.getAttribute("data-dump-yaml-rel"), btn);
+    });
+  });
+  if(search) search.addEventListener("input", render);
+  var first=mod.querySelector(".dump-yaml-file");
+  if(first) showFile(first.getAttribute("data-dump-yaml-id"), first.getAttribute("data-dump-yaml-rel"), first);
+})();</script>
+{{ end }}
 {{ end }}
 </section>

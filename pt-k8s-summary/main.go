@@ -128,6 +128,14 @@ type processingReport struct {
 	HasErrorsFile    bool
 	// GaleraSince is the pt-galera-log-explainer --since= value (RFC3339), or "".
 	GaleraSince string
+	// DumpInventory lists expected collector exports (found / missing / unreadable).
+	DumpInventory []dumpfiles.InventoryRow
+	// DumpInventoryGaps is the count of missing + unreadable inventory rows.
+	DumpInventoryGaps int
+	// DumpBrowserFiles are YAML exports embedded for the in-report YAML browser.
+	DumpBrowserFiles []dumpfiles.BrowserFile
+	// DumpBrowserGroups is the sidebar tree for the YAML browser.
+	DumpBrowserGroups []dumpfiles.BrowserTreeGroup
 }
 
 var quantityRe = regexp.MustCompile(`^([0-9]*\.?[0-9]+)([A-Za-z]*)$`)
@@ -304,35 +312,56 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		}
 	}
 
+	nodesStatus := dumpfiles.InvMissing
+	nodesRel := ""
+	nodesNote := ""
+	var list nodeListDoc
+
 	if nodesFlag != "" {
 		var err error
 		nodesAbs, err = filepath.Abs(nodesFlag)
 		if err != nil {
 			return fmt.Errorf("nodes path: %w", err)
 		}
+		nodesRel = filepath.Base(nodesAbs)
 	} else {
-		var nodesRel string
 		var err error
 		nodesAbs, nodesRel, err = dumpfiles.FindNodesYAML(dumpAbs)
 		if err != nil {
-			return err
-		}
-		if proc.SourceArchive != "" && !strings.HasPrefix(proc.SourceArchive, "(directory mode") {
+			if strings.Contains(err.Error(), "not found") {
+				nodesStatus = dumpfiles.InvMissing
+				nodesNote = "not part of this cluster dump"
+				proc.NodesPathDisplay = "(not found)"
+			} else {
+				nodesStatus = dumpfiles.InvUnreadable
+				nodesNote = err.Error()
+				proc.NodesPathDisplay = "(unreadable)"
+			}
+			nodesAbs = ""
+		} else if proc.SourceArchive != "" && !strings.HasPrefix(proc.SourceArchive, "(directory mode") {
 			proc.NodesPathDisplay = filepath.ToSlash(filepath.Join(filepath.Base(dumpAbs), nodesRel))
 		}
 	}
-	if proc.NodesPathDisplay == "" {
-		proc.NodesPathDisplay = nodesAbs
-	}
-
-	data, err := os.ReadFile(nodesAbs)
-	if err != nil {
-		return fmt.Errorf("read nodes file %q: %w", nodesAbs, err)
-	}
-
-	var list nodeListDoc
-	if err := yaml.Unmarshal(data, &list); err != nil {
-		return fmt.Errorf("parse nodes yaml: %w", err)
+	if nodesAbs != "" {
+		if proc.NodesPathDisplay == "" {
+			proc.NodesPathDisplay = nodesAbs
+		}
+		data, err := os.ReadFile(nodesAbs)
+		if err != nil {
+			nodesStatus = dumpfiles.InvUnreadable
+			nodesNote = err.Error()
+			if nodesFlag != "" {
+				proc.NodesPathDisplay = nodesAbs + " (unreadable)"
+			}
+		} else if err := yaml.Unmarshal(data, &list); err != nil {
+			nodesStatus = dumpfiles.InvUnreadable
+			nodesNote = err.Error()
+		} else {
+			nodesStatus = dumpfiles.InvFound
+			if nodesRel == "" {
+				nodesRel = dumpfiles.RelPathUnder(dumpAbs, nodesAbs)
+			}
+		}
 	}
 
 	now := time.Now()
@@ -391,11 +420,13 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	certCache := jpreport.NewCertifiedImageCache(certifiedImages)
 	pxcRows, pxcFileCount, err := jpreport.LoadPXCRowsFromDump(dumpAbs, now, podsData, certCache)
 	if err != nil {
-		return fmt.Errorf("pxc resources: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: pxc resources: %v (continuing without PXC clusters)\n", err)
+		pxcRows, pxcFileCount = nil, 0
 	}
 	pxcAbsPaths, err := jpreport.ListPXCYAMLFiles(dumpAbs)
 	if err != nil {
-		return fmt.Errorf("pxc yaml list: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: pxc yaml list: %v\n", err)
+		pxcAbsPaths = nil
 	}
 	proc.PXCYAMLRelPaths = make([]string, 0, len(pxcAbsPaths))
 	for _, p := range pxcAbsPaths {
@@ -407,7 +438,8 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 	psAbsPaths, err := jpreport.ListPSYAMLFiles(dumpAbs)
 	if err != nil {
-		return fmt.Errorf("ps yaml list: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: ps yaml list: %v\n", err)
+		psAbsPaths = nil
 	}
 	proc.PSYAMLRelPaths = make([]string, 0, len(psAbsPaths))
 	for _, p := range psAbsPaths {
@@ -430,7 +462,8 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 	backupRows, backupFileCount, err := jpreport.LoadBackupRowsFromDump(dumpAbs, now, podsData)
 	if err != nil {
-		return fmt.Errorf("pxc backups: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: pxc backups: %v (continuing without PXC backups)\n", err)
+		backupRows, backupFileCount = nil, 0
 	}
 	backupMeta := ""
 	if len(backupRows) > 0 {
@@ -438,7 +471,8 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 	psRows, psFileCount, err := jpreport.LoadPSRowsFromDump(dumpAbs, now, podsData, certCache)
 	if err != nil {
-		return fmt.Errorf("ps resources: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: ps resources: %v (continuing without PS clusters)\n", err)
+		psRows, psFileCount = nil, 0
 	}
 	psMeta := ""
 	if len(psRows) > 0 {
@@ -460,7 +494,8 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 	psBackupRows, psBackupFileCount, err := jpreport.LoadPSBackupRowsFromDump(dumpAbs, now, podsData)
 	if err != nil {
-		return fmt.Errorf("ps backups: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: ps backups: %v (continuing without PS backups)\n", err)
+		psBackupRows, psBackupFileCount = nil, 0
 	}
 	psBackupMeta := ""
 	if len(psBackupRows) > 0 {
@@ -469,7 +504,8 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 
 	pgRows, pgFileCount, err := jpreport.LoadPGRowsFromDump(dumpAbs, now)
 	if err != nil {
-		return fmt.Errorf("pg clusters: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: pg clusters: %v (continuing without PG clusters)\n", err)
+		pgRows, pgFileCount = nil, 0
 	}
 	pgMeta := ""
 	if len(pgRows) > 0 {
@@ -477,12 +513,14 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 	pgOperatorRows, err := jpreport.LoadPGOperatorRowsFromDump(dumpAbs, now)
 	if err != nil {
-		return fmt.Errorf("pg operator: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: pg operator: %v (continuing without PG operator section)\n", err)
+		pgOperatorRows = nil
 	}
 	pgPodRows := jpreport.LoadPGWorkloadPodRows(podsData, dumpAbs, now)
 	pgBackupRows, pgBackupFileCount, err := jpreport.LoadPGBackupRowsFromDump(dumpAbs, now)
 	if err != nil {
-		return fmt.Errorf("pg backups: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: pg backups: %v (continuing without PG backups)\n", err)
+		pgBackupRows, pgBackupFileCount = nil, 0
 	}
 	pgBackupMeta := ""
 	if len(pgBackupRows) > 0 {
@@ -490,7 +528,8 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 	pgRestoreRows, pgRestoreFileCount, err := jpreport.LoadPGRestoreRowsFromDump(dumpAbs, now)
 	if err != nil {
-		return fmt.Errorf("pg restores: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: pg restores: %v (continuing without PG restores)\n", err)
+		pgRestoreRows, pgRestoreFileCount = nil, 0
 	}
 	pgRestoreMeta := ""
 	if len(pgRestoreRows) > 0 {
@@ -498,12 +537,23 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	}
 	pgUpgradeRows, pgUpgradeFileCount, err := jpreport.LoadPGUpgradeRowsFromDump(dumpAbs, now)
 	if err != nil {
-		return fmt.Errorf("pg upgrades: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: pg upgrades: %v (continuing without PG upgrades)\n", err)
+		pgUpgradeRows, pgUpgradeFileCount = nil, 0
 	}
 	pgUpgradeMeta := ""
 	if len(pgUpgradeRows) > 0 {
 		pgUpgradeMeta = fmt.Sprintf("Found %d upgrade(s) in %d YAML file(s).", len(pgUpgradeRows), pgUpgradeFileCount)
 	}
+
+	proc.DumpInventory = dumpfiles.BuildInventory(dumpAbs, nodesStatus, nodesRel, nodesNote)
+	for _, row := range proc.DumpInventory {
+		if row.Status == dumpfiles.InvMissing || row.Status == dumpfiles.InvUnreadable {
+			proc.DumpInventoryGaps++
+		}
+	}
+	dumpfiles.WarnInventoryGaps(os.Stderr, proc.DumpInventory)
+	proc.DumpBrowserFiles = dumpfiles.CollectBrowserFiles(dumpAbs)
+	proc.DumpBrowserGroups = dumpfiles.BrowserTreeGroups(proc.DumpBrowserFiles)
 
 	extraSections := collector.GatherSections(dumpCtx)
 	sectionsByGroup := collector.GatherSectionsByGroup(dumpCtx)

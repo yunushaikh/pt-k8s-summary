@@ -76,6 +76,19 @@ Update this file whenever a feature is added or its sources change (see project 
 
 ---
 
+## Feature: Dump inventory + soft-fail + YAML browser
+
+- **UI:** Processing details → **Dump inventory** table (artifact / status / path / note) and **Browse dump YAML** (modal: folder tree, file pane, in-file search with highlight).
+- **Status:** shipped (since v0.8.5)
+- **Primary source:** walk of the dump root for expected collector exports (`nodes.yaml`, `events.yaml`, `pods.yaml`, `statefulsets.yaml`, `errors.txt`, PXC/PS/PG list YAML via `dumpfiles.FindListYAMLFiles`).
+- **Soft-fail:** missing or unreadable `nodes.yaml` (and operator list load/parse errors) no longer abort HTML generation; the report is written with empty affected sections.
+- **Generation warnings:** every inventory row with status `missing` or `unreadable` prints to stderr as `warning: dump file missing: …` or `warning: dump file unreadable: …` while generating the report.
+- **YAML browser embed caps:** per-file 256 KiB, up to 80 files, ~6 MiB total; oversize files appear in the tree as omitted with a note.
+- **If missing:** inventory shows `missing` / `unreadable`; browser button disabled when nothing was embedded.
+- **Caveats:** Operator CRDs absent from a single-product dump (e.g. no PS YAML on a PXC-only dump) are listed as missing and warned — expected for incomplete multi-operator coverage, not necessarily a collector failure.
+
+---
+
 ## Feature: PXC previous status transitions
 
 - **UI:** PXC tab → under each cluster row → **Previous transitions** (time, type, status, reason, message), oldest first. `error` and `ErrorReconcile` are highlighted. Every unique condition is listed (no row cap). Six or fewer rows start expanded; more than six use the same collapsed summary as backups (**expand to view**, with the error count in the summary).

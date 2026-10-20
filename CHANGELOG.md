@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.5] - 2026-10-20
+
+### Added
+
+- **Dump inventory:** Processing details lists expected collector exports (nodes, events, pods, statefulsets, errors.txt, PXC/PS/PG CR lists) as found / missing / unreadable.
+- **Soft-fail missing dump files:** HTML report still generates when `nodes.yaml` or operator list YAML is missing or unreadable; affected sections are empty instead of aborting.
+- **Generation warnings:** each missing or unreadable inventory artifact prints `warning: dump file missing:` / `warning: dump file unreadable:` on stderr while writing the report.
+- **Dump YAML browser:** Browse dump YAML exports in-report (file tree + in-file search). Large files may be omitted or truncated. See [docs/FEATURES.md](docs/FEATURES.md).
+
 ## [0.8.4] - 2026-10-20
 
 ### Added
