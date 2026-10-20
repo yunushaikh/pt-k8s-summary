@@ -44,7 +44,13 @@ GOOS=darwin GOARCH=arm64 go build -o /tmp/pt-k8s-summary-darwin-arm64 .
 
 Official multi-arch release binaries are built by CI on each tag — see [RELEASE.md](RELEASE.md).
 
+## Tests
+
+```bash
+cd pt-k8s-summary
+go test ./...
+```
+
 ## See also
 
 - [USAGE.md](USAGE.md) — how to run the binary
-- [DEVELOPMENT.md](DEVELOPMENT.md) — tests and project layout

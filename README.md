@@ -13,7 +13,6 @@ The report summarizes nodes, Percona XtraDB Cluster (PXC), Percona Server for My
 | [docs/INSTALL.md](docs/INSTALL.md) | Download and install (Linux / macOS, all architectures) |
 | [docs/USAGE.md](docs/USAGE.md) | Run the tool, flags, reading and sharing reports |
 | [docs/BUILD.md](docs/BUILD.md) | Build from source |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Contributors: layout, tests, roadmap |
 
 ## Releases
 
