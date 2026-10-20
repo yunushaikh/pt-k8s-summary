@@ -47,6 +47,7 @@ a:hover { color: #155e75; }
   max-width: 1160px;
   margin: 0 auto;
   padding: 1.75rem clamp(1rem, 4vw, 2.25rem) 3.5rem;
+  padding-right: max(4.75rem, clamp(1rem, 4vw, 2.25rem));
   min-height: 100vh;
 }
 .report-masthead {
@@ -276,7 +277,91 @@ h3.addl-h3 {
 }
 .pxc-cfg-openwrap { margin-top: 0.35rem; }
 /* Dump inventory + YAML browser */
-.dump-inv-wrap { margin: 1.1rem 0 0; }
+.report-side-nav {
+  position: fixed;
+  top: 5.5rem;
+  right: 0.55rem;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.report-side-btn {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px 0 0 8px;
+  padding: 0.7rem 0.38rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.report-side-btn:hover, .report-side-btn[aria-expanded="true"] {
+  color: #0f766e;
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+.report-side-badge {
+  writing-mode: horizontal-tb;
+  display: inline-block;
+  margin-top: 0.35rem;
+  min-width: 1.15rem;
+  padding: 0.05rem 0.28rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: var(--warn);
+  font-size: 0.68rem;
+  text-align: center;
+}
+.report-side-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(15, 23, 42, 0.35);
+}
+.report-side-backdrop[hidden] { display: none; }
+.report-side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 60;
+  width: min(46rem, 94vw);
+  height: 100vh;
+  overflow: auto;
+  background: var(--surface);
+  box-shadow: -8px 0 28px rgba(15, 23, 42, 0.12);
+  padding: 1rem 1.15rem 2rem;
+  transform: translateX(105%);
+  visibility: hidden;
+}
+.report-side-panel.is-open {
+  transform: none;
+  visibility: visible;
+}
+.report-side-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+}
+.report-side-h h2 { margin: 0; border: none; padding: 0; }
+.report-side-x {
+  font: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+}
+.dump-inv-wrap { margin: 0; }
 .dump-inv-wrap h3 { font-size: 0.9rem; margin: 0 0 0.35rem; color: var(--ink-soft); }
 .dump-inv-note { font-size: 0.78rem; color: var(--muted); margin: 0 0 0.55rem; }
 .dump-inv-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
@@ -319,7 +404,17 @@ h3.addl-h3 {
   body { background: #fff; }
   .report-shell { max-width: none; padding: 0.5rem; }
   .report-card, .report-section, .report-subsection, .nodes-coll, table.pxc-inner-table { break-inside: avoid; }
-  .dump-yaml-modal { display: none !important; }
+  .dump-yaml-modal, .report-side-nav, .report-side-backdrop { display: none !important; }
+  .report-side-panel {
+    position: static;
+    transform: none;
+    visibility: visible;
+    width: auto;
+    height: auto;
+    box-shadow: none;
+    overflow: visible;
+    page-break-before: always;
+  }
 }
 </style>
 </head>
@@ -329,8 +424,15 @@ h3.addl-h3 {
 <p class="report-kicker">pt-k8s-summary</p>
 <h1 class="report-title">Cluster summary</h1>
 </header>
-<section class="report-card">
-<h2>Processing details</h2>
+<nav class="report-side-nav" aria-label="Report tools">
+<button type="button" class="report-side-btn" data-side-panel="report-side-proc" aria-controls="report-side-proc" aria-expanded="false">Processing details</button>
+{{ if .Proc.DumpInventory }}
+<button type="button" class="report-side-btn" data-side-panel="report-side-inv" aria-controls="report-side-inv" aria-expanded="false">Dump inventory{{ if .Proc.DumpInventoryGaps }}<span class="report-side-badge">{{ .Proc.DumpInventoryGaps }}</span>{{ end }}</button>
+{{ end }}
+</nav>
+<div id="report-side-backdrop" class="report-side-backdrop" hidden></div>
+<aside id="report-side-proc" class="report-side-panel" aria-hidden="true" aria-labelledby="report-side-proc-title">
+<div class="report-side-h"><h2 id="report-side-proc-title">Processing details</h2><button type="button" class="report-side-x" aria-label="Close">×</button></div>
 <p class="meta" style="margin-top:0">Everything below was derived from the following inputs (typical layout from <code>pt-k8s-debug-collector</code>).</p>
 <ul class="proc-list">
 <li><strong>Source</strong>: {{ .Proc.SourceArchive }}</li>
@@ -380,9 +482,11 @@ h3.addl-h3 {
   });
 })();</script>
 {{ end }}
+</aside>
 {{ if .Proc.DumpInventory }}
+<aside id="report-side-inv" class="report-side-panel" aria-hidden="true" aria-labelledby="report-side-inv-title">
+<div class="report-side-h"><h2 id="report-side-inv-title">Dump inventory</h2><button type="button" class="report-side-x" aria-label="Close">×</button></div>
 <div class="dump-inv-wrap">
-<h3>Dump inventory</h3>
 <p class="dump-inv-note">Expected <code>pt-k8s-debug-collector</code> exports under this dump. Missing or unreadable files also emit <code>warning:</code> lines when the HTML report is generated.{{ if .Proc.DumpInventoryGaps }} <strong>{{ .Proc.DumpInventoryGaps }} gap(s)</strong> in this dump.{{ end }}</p>
 <table class="dump-inv-table">
 <thead><tr><th>Artifact</th><th>Status</th><th>Path</th><th>Note</th></tr></thead>
@@ -495,5 +599,41 @@ h3.addl-h3 {
   if(first) showFile(first.getAttribute("data-dump-yaml-id"), first.getAttribute("data-dump-yaml-rel"), first);
 })();</script>
 {{ end }}
+</aside>
 {{ end }}
-</section>
+<script>(function(){
+  var nav=document.querySelector(".report-side-nav");
+  var backdrop=document.getElementById("report-side-backdrop");
+  if(!nav)return;
+  function closeAll(){
+    document.querySelectorAll(".report-side-panel.is-open").forEach(function(p){
+      p.classList.remove("is-open");
+      p.setAttribute("aria-hidden","true");
+    });
+    nav.querySelectorAll(".report-side-btn").forEach(function(b){ b.setAttribute("aria-expanded","false"); });
+    if(backdrop) backdrop.hidden=true;
+  }
+  nav.addEventListener("click", function(ev){
+    var btn=ev.target.closest ? ev.target.closest(".report-side-btn") : null;
+    if(!btn)return;
+    var id=btn.getAttribute("data-side-panel");
+    var panel=document.getElementById(id);
+    var wasOpen=btn.getAttribute("aria-expanded")==="true";
+    closeAll();
+    if(wasOpen||!panel)return;
+    panel.classList.add("is-open");
+    panel.setAttribute("aria-hidden","false");
+    btn.setAttribute("aria-expanded","true");
+    if(backdrop) backdrop.hidden=false;
+  });
+  document.querySelectorAll(".report-side-x").forEach(function(el){ el.addEventListener("click", closeAll); });
+  if(backdrop) backdrop.addEventListener("click", closeAll);
+  document.addEventListener("keydown", function(ev){
+    if(ev.key!=="Escape")return;
+    var yaml=document.getElementById("dump-yaml-modal");
+    var err=document.getElementById("collector-err-modal");
+    if(yaml && yaml.getAttribute("aria-hidden")==="false")return;
+    if(err && err.getAttribute("aria-hidden")==="false")return;
+    closeAll();
+  });
+})();</script>

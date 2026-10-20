@@ -78,8 +78,8 @@ Update this file whenever a feature is added or its sources change (see project 
 
 ## Feature: Dump inventory + soft-fail + YAML browser
 
-- **UI:** Processing details → **Dump inventory** table (artifact / status / path / note) and **Browse dump YAML** (modal: folder tree, file pane, in-file search with highlight).
-- **Status:** shipped (since v0.8.5)
+- **UI:** Right-edge menu. **Processing details** and **Dump inventory** open in a side panel (closed by default so the report starts on the cluster summary). The inventory button shows a gap count when files are missing. **Browse dump YAML** stays inside the inventory panel (modal: folder tree, file pane, in-file search with highlight).
+- **Status:** shipped (since v0.8.5). Side menu since v0.8.6.
 - **Primary source:** walk of the dump root for expected collector exports (`nodes.yaml`, `events.yaml`, `pods.yaml`, `statefulsets.yaml`, `errors.txt`, PXC/PS/PG list YAML via `dumpfiles.FindListYAMLFiles`).
 - **Soft-fail:** missing or unreadable `nodes.yaml` (and operator list load/parse errors) no longer abort HTML generation; the report is written with empty affected sections.
 - **Generation warnings:** every inventory row with status `missing` or `unreadable` prints to stderr as `warning: dump file missing: …` or `warning: dump file unreadable: …` while generating the report.

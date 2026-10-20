@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.6] - 2026-10-20
+
+### Changed
+
+- **Dump inventory:** Processing details and the dump inventory table open from a side menu instead of filling the top of the report. The inventory button shows how many files are missing.
+
 ## [0.8.5] - 2026-10-20
 
 ### Added
