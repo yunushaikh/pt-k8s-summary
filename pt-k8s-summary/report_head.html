@@ -47,7 +47,6 @@ a:hover { color: #155e75; }
   max-width: 1160px;
   margin: 0 auto;
   padding: 1.75rem clamp(1rem, 4vw, 2.25rem) 3.5rem;
-  padding-right: max(4.75rem, clamp(1rem, 4vw, 2.25rem));
   min-height: 100vh;
 }
 .report-masthead {
@@ -278,45 +277,47 @@ h3.addl-h3 {
 .pxc-cfg-openwrap { margin-top: 0.35rem; }
 /* Dump inventory + YAML browser */
 .report-side-nav {
-  position: fixed;
-  top: 5.5rem;
-  right: 0.55rem;
-  z-index: 45;
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
 }
 .report-side-btn {
   font: inherit;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  color: var(--ink-soft);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px 0 0 8px;
-  padding: 0.7rem 0.38rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: #0f766e;
+  background: #f0fdfa;
+  border: 1px solid #0f766e;
+  border-radius: 8px;
+  padding: 0.48rem 0.9rem;
   cursor: pointer;
   box-shadow: var(--shadow);
 }
 .report-side-btn:hover, .report-side-btn[aria-expanded="true"] {
-  color: #0f766e;
-  border-color: #99f6e4;
-  background: #f0fdfa;
+  color: #fff;
+  background: #0f766e;
+  border-color: #0f766e;
+}
+.report-side-btn[aria-expanded="true"] .report-side-badge,
+.report-side-btn:hover .report-side-badge {
+  background: #fff;
+  color: #a16207;
 }
 .report-side-badge {
-  writing-mode: horizontal-tb;
   display: inline-block;
-  margin-top: 0.35rem;
+  margin-left: 0.45rem;
   min-width: 1.15rem;
-  padding: 0.05rem 0.28rem;
+  padding: 0.05rem 0.38rem;
   border-radius: 999px;
   background: #fef3c7;
   color: var(--warn);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
   text-align: center;
+  vertical-align: middle;
 }
 .report-side-backdrop {
   position: fixed;

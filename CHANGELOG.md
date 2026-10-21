@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Dump inventory:** Processing details and the dump inventory table open from a side menu instead of filling the top of the report. The inventory button shows how many files are missing.
+- **Dump inventory:** Processing details and Dump inventory are horizontal buttons under the report title. Each opens a panel, so the table does not fill the top of the report. The inventory button shows how many files are missing. Browse dump YAML is inside Dump inventory.
 
 ## [0.8.5] - 2026-10-20
 

@@ -114,3 +114,4 @@ jobs:
             dist/pt-k8s-summary_darwin_arm64
             dist/SHA256SUMS
           generate_release_notes: false
+          overwrite_files: true
