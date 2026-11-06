@@ -9,13 +9,13 @@ import (
 
 const esc = "\x1b"
 
-func printWroteReport(outPath string, nodeCount, pxcCount, pxcFiles, backupCount, backupFiles, psCount, psFiles, psBackupCount, psBackupFiles, pgCount, pgFiles, pgBackupCount, pgBackupFiles int) {
+func printWroteReport(outPath string, nodeCount, pxcCount, pxcFiles, backupCount, backupFiles, psCount, psFiles, psBackupCount, psBackupFiles, pgCount, pgFiles, pgBackupCount, pgBackupFiles, mongoCount, mongoFiles, mongoBackupCount, mongoBackupFiles int) {
 	abs, err := filepath.Abs(outPath)
 	if err != nil {
 		abs = outPath
 	}
-	summary := fmt.Sprintf("(%d nodes, %d PXC cluster(s) from %d file(s), %d backup(s) from %d file(s), %d PS cluster(s) from %d file(s), %d PS backup(s) from %d file(s), %d PG cluster(s) from %d file(s), %d PG backup(s) from %d file(s))",
-		nodeCount, pxcCount, pxcFiles, backupCount, backupFiles, psCount, psFiles, psBackupCount, psBackupFiles, pgCount, pgFiles, pgBackupCount, pgBackupFiles)
+	summary := fmt.Sprintf("(%d nodes, %d PXC cluster(s) from %d file(s), %d backup(s) from %d file(s), %d PS cluster(s) from %d file(s), %d PS backup(s) from %d file(s), %d PG cluster(s) from %d file(s), %d PG backup(s) from %d file(s), %d MongoDB cluster(s) from %d file(s), %d MongoDB backup(s) from %d file(s))",
+		nodeCount, pxcCount, pxcFiles, backupCount, backupFiles, psCount, psFiles, psBackupCount, psBackupFiles, pgCount, pgFiles, pgBackupCount, pgBackupFiles, mongoCount, mongoFiles, mongoBackupCount, mongoBackupFiles)
 
 	pathOut := abs
 	if stdoutIsTTY() {

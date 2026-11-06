@@ -49,7 +49,7 @@ pt-k8s-summary -version
 | `-out` | Output HTML path |
 | `-galera-since` | RFC3339 timestamp for pt-galera-log-explainer `--since=` |
 | `-certified-images` | Fetch/compare Percona certified images from release notes for `spec.crVersion` (default: `true`). Offline: `false` → rows show **not checked**. |
-| `-layout` | Report layout: `grouped` (default, tabbed Kubernetes / PXC / Percona Server / PostgreSQL) or `classic` (linear) |
+| `-layout` | Report layout: `grouped` (default, tabbed Kubernetes / PXC / Percona Server / PostgreSQL / MongoDB) or `classic` (linear) |
 
 **Certified images availability:** Percona publishes the “Percona certified images” table on PXC operator notes from **1.17.0+** and PS from **0.10.0+**. Older releases (PXC ≤ 1.16.x, PS ≤ 0.9.x) have no table — the report shows a muted note and **not checked**, not a red **no**. A missing/404 release-notes page (e.g. not-yet-published version) is treated as a fetch error with the same **not checked** cells. Details: [FEATURES.md](FEATURES.md).
 
@@ -65,6 +65,7 @@ pt-k8s-summary -version
 | **Percona XtraDB Cluster** | Shown only when PXC CRs, backups, pod logs, or PXC collector sections exist |
 | **Percona Server for MySQL** | Shown only when PS CRs, backups, pod logs, or PS collector sections exist |
 | **Percona PostgreSQL** | Shown only when PG CRs, backups/restores/upgrades, operator data, pod logs, or PG collector sections exist |
+| **Percona MongoDB** | Shown only when Percona Server for MongoDB clusters, backups, restores, pod logs, or TLS dumps exist. Red rows are the gaps: not-ready components, missing member roles, no PRIMARY, StatefulSet or pod readiness mismatches, error conditions, and failed backups. Certificates list issuer and expiry |
 
 **Classic layout:** pass `-layout classic` for the previous single-page linear report.
 
@@ -107,7 +108,7 @@ pt-k8s-summary dump.tar.gz -out reports/my.html
 | Section | Tips |
 |---------|------|
 | **Processing details** | Dump inputs; collector `errors.txt` if present |
-| **PXC · pod logs** | Formatted vs Full logs; large files use sidecar `_logs/` directory |
+| **Pod logs** (PXC, Percona Server, PostgreSQL, MongoDB) | Formatted vs Full. A large file opens on its newest lines. Open in a new window for the full file in the `_logs/` folder |
 | **Nodes** | Collapsible table with **filter** |
 | **Backups** | Collapsed by default; **filter** matches status/columns (not log text); **View logs** in Logs column |
 | **Events** | Collapsible, filterable, newest first |
@@ -115,7 +116,7 @@ pt-k8s-summary dump.tar.gz -out reports/my.html
 
 ### Large pod logs
 
-Embedded logs are capped at ~750 KiB per file. Larger logs are copied next to the report:
+Embedded logs are capped at ~750 KiB per file. A larger file shows its **newest lines** in the viewer (a note above the text says so). The complete file is copied next to the report:
 
 ```
 reports/my-report.html
@@ -123,7 +124,7 @@ reports/my-report_logs/<namespace>/<pod>/…/mysqld-error.log
 reports/my-report_logs/<namespace>/<pod>/…/mysqld-error.log.formatted
 ```
 
-When sharing a report, include the HTML **and** the `_logs` folder. In the viewer, use **Load full** / **Open in new tab** for truncated embeds.
+When sharing a report, include the HTML **and** the `_logs` folder. In the viewer, use **Open in a new window** for the lines that were not embedded.
 
 ## See also
 

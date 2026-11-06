@@ -2,7 +2,7 @@
 
 Generate a single **HTML report** from a Kubernetes cluster dump collected with [pt-k8s-debug-collector](https://github.com/percona/k8spxc-debug-collector).
 
-The report summarizes nodes, Percona XtraDB Cluster (PXC), Percona Server for MySQL, **Percona PostgreSQL**, backups, pod logs, events, certificates, and related configuration. Reports use a **tabbed layout** by default (Kubernetes | PXC | Percona Server | PostgreSQL). Use `-layout classic` for the older linear format.
+The report summarizes nodes, Percona XtraDB Cluster (PXC), Percona Server for MySQL, **Percona PostgreSQL**, **Percona Server for MongoDB**, backups, pod logs, events, certificates, and related configuration. Reports use a **tabbed layout** by default (Kubernetes | PXC | Percona Server | PostgreSQL | MongoDB). Use `-layout classic` for the older linear format.
 
 ## Documentation
 
@@ -16,7 +16,7 @@ The report summarizes nodes, Percona XtraDB Cluster (PXC), Percona Server for My
 
 ## Releases
 
-- [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) — pre-built binaries and `SHA256SUMS` (latest: **v0.8.6**)
+- [GitHub Releases](https://github.com/yunushaikh/pt-k8s-summary/releases) — pre-built binaries and `SHA256SUMS` (latest: **v0.9.0**)
 - [CHANGELOG.md](CHANGELOG.md) — version history and release notes
 
 Check your installed version: `pt-k8s-summary -version`

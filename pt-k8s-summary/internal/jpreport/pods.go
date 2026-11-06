@@ -374,6 +374,12 @@ func operatorKindFromPodLabels(labels map[string]string, podName string) string 
 		}
 		partOf := strings.TrimSpace(labels["app.kubernetes.io/part-of"])
 		comp := strings.TrimSpace(labels["app.kubernetes.io/component"])
+		if partOf == "percona-server-mongodb" || strings.TrimSpace(labels["app.kubernetes.io/name"]) == "percona-server-mongodb" {
+			return "mongo-workload"
+		}
+		if strings.TrimSpace(labels["name"]) == "percona-server-mongodb-operator" {
+			return "mongo-operator"
+		}
 		if partOf == "pg-operator" && comp == "operator" {
 			return "pg-operator"
 		}
@@ -433,6 +439,12 @@ func operatorKindFromPodName(podName string) string {
 	p := strings.ToLower(strings.TrimSpace(podName))
 	if p == "" {
 		return ""
+	}
+	if strings.Contains(p, "percona-server-mongodb-operator") {
+		return "mongo-operator"
+	}
+	if strings.Contains(p, "-mongos-") || strings.Contains(p, "-cfg-") || strings.Contains(p, "-rs") {
+		return "mongo-workload"
 	}
 	if strings.Contains(p, "percona-server-mysql-operator") {
 		return "ps"

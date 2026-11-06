@@ -30,5 +30,6 @@ func ownerSections() []SectionCollector {
 		psStatusSection{},
 		psTopologySection{},
 		pgCertificatesSection{},
+		mongoCertificatesSection{},
 	}
 }

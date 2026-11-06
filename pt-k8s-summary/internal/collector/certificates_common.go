@@ -270,7 +270,7 @@ func renderCertsTable(sectionID, noteHTML string, rows []internalCertEntry) stri
 			b.WriteString(esc(r.NotAfter))
 		}
 		b.WriteString(`</td><td class="pxc-cert-skip">`)
-		if r.Skip {
+		if r.SkipReason != "" {
 			b.WriteString(esc(r.SkipReason))
 		} else {
 			b.WriteString(`—`)

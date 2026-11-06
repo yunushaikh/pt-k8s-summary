@@ -1,0 +1,116 @@
+{{ define "mongoClusters" }}
+<h2>Percona Server for MongoDB</h2>
+{{ if .MongoEmpty }}
+<p class="meta">No <code>PerconaServerMongoDB</code> resources under <code>{{ .Proc.DumpRootDisplay }}</code>.</p>
+{{ else }}
+<p class="meta">{{ .MongoMeta }} Roles come from <code>status.replsets.*.members.stateStr</code> (PRIMARY / SECONDARY). Rows in red are the gaps to check before opening the dump files. Kubernetes events are on the Kubernetes tab.</p>
+<table>
+<thead><tr><th>Name</th><th>Namespace</th><th>State</th><th>Ready</th><th>Mongo</th><th>CR</th><th>Sharding</th><th>PITR</th><th>PMM</th><th>Host</th><th>Age</th></tr></thead>
+<tbody>
+{{ range .MongoRows }}
+<tr{{ if or .StateProblem .Issues }} class="mongo-problem"{{ end }}>
+<td class="pxc-cr-name-cell">{{ if ne .CRYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .CRYAMLModalID }}-full">{{ .CRYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .CRYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Namespace }}</td>
+<td>{{ if .StateProblem }}<span class="unsafe-flags-bad">{{ .State }}</span>{{ else }}{{ .State }}{{ end }}</td>
+<td>{{ if .StateProblem }}<span class="unsafe-flags-bad">{{ .ReadyCount }}</span>{{ else }}{{ .ReadyCount }}{{ end }}</td>
+<td>{{ .MongoVersion }}</td>
+<td>{{ .CRVersion }}</td>
+<td>{{ .Sharding }}</td>
+<td>{{ .PITR }}</td>
+<td>{{ .PMM }}</td>
+<td><code>{{ .Endpoint }}</code></td>
+<td>{{ .Age }}</td>
+</tr>
+<tr><td colspan="11" class="pxc-comp-wrap">
+{{ if .Issues }}
+<p class="mongo-issue-list"><strong>Check these first.</strong></p>
+<ul class="mongo-issue-list">{{ range .Issues }}<li>{{ . }}</li>{{ end }}</ul>
+{{ end }}
+{{ if .UnsafeOn }}<p class="meta">Unsafe flags on: <code>{{ .UnsafeOn }}</code>. Update strategy: {{ .UpdateStrategy }}.</p>{{ else }}<p class="meta">Update strategy: {{ .UpdateStrategy }}.</p>{{ end }}
+<h3 class="pxc-subsection-title">Topology</h3>
+<table class="pxc-inner-table">
+<thead><tr><th>Component</th><th>Kind</th><th>Status</th><th>Ready</th><th>Spec size</th><th>STS ready</th><th>Members</th><th>Issue</th></tr></thead>
+<tbody>
+{{ range .Components }}
+<tr{{ if .IsProblem }} class="mongo-problem"{{ end }}>
+<td><code>{{ .Name }}</code></td>
+<td>{{ .Kind }}</td>
+<td>{{ .Status }}</td>
+<td>{{ .Ready }}</td>
+<td>{{ .SpecSize }}</td>
+<td>{{ .STSReady }}</td>
+<td>{{ .Members }}</td>
+<td>{{ if .IsProblem }}<span class="unsafe-flags-bad">{{ .Issue }}</span>{{ else }}—{{ end }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ if .Conditions }}
+<h3 class="pxc-subsection-title">Status conditions</h3>
+<table class="pxc-inner-table">
+<thead><tr><th>Time</th><th>Type</th><th>Status</th><th>Reason</th><th>Message</th></tr></thead>
+<tbody>
+{{ range .Conditions }}
+<tr{{ if .IsError }} class="mongo-problem"{{ end }}>
+<td>{{ .Time }}</td><td>{{ .Type }}</td><td>{{ .Status }}</td><td>{{ .Reason }}</td><td>{{ if .Message }}{{ .Message }}{{ else }}—{{ end }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+</td></tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}
+
+{{ define "mongoBackups" }}
+<h2>MongoDB backups</h2>
+{{ if .MongoBackupEmpty }}
+<p class="meta">No <code>PerconaServerMongoDBBackup</code> resources in this dump.</p>
+{{ else }}
+<p class="meta">{{ .MongoBackupMeta }} Failed backups are listed first.</p>
+<table>
+<thead><tr><th>Name</th><th>Cluster</th><th>Storage</th><th>Type</th><th>State</th><th>Error</th><th>Started</th><th>Completed</th></tr></thead>
+<tbody>
+{{ range .MongoBackupRows }}
+<tr{{ if .StateProblem }} class="mongo-problem"{{ end }}>
+<td class="pxc-cr-name-cell">{{ if ne .BackupYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .BackupYAMLModalID }}-full">{{ .BackupYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .BackupYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Cluster }}</td>
+<td>{{ .Storage }}</td>
+<td>{{ .Type }}</td>
+<td>{{ if .StateProblem }}<span class="unsafe-flags-bad">{{ .State }}</span>{{ else }}{{ .State }}{{ end }}</td>
+<td>{{ if .Error }}<span class="unsafe-flags-bad">{{ .Error }}</span>{{ else }}—{{ end }}</td>
+<td>{{ .Started }}</td>
+<td>{{ .Completed }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}
+
+{{ define "mongoRestores" }}
+<h2>MongoDB restores</h2>
+{{ if .MongoRestoreEmpty }}
+<p class="meta">No <code>PerconaServerMongoDBRestore</code> resources in this dump.</p>
+{{ else }}
+<p class="meta">{{ .MongoRestoreMeta }}</p>
+<table>
+<thead><tr><th>Name</th><th>Cluster</th><th>Backup</th><th>State</th><th>Error</th><th>Completed</th></tr></thead>
+<tbody>
+{{ range .MongoRestoreRows }}
+<tr{{ if .StateProblem }} class="mongo-problem"{{ end }}>
+<td class="pxc-cr-name-cell">{{ if ne .RestoreYAMLEscaped "" }}<textarea readonly hidden class="pxc-cr-yaml-store" id="{{ .RestoreYAMLModalID }}-full">{{ .RestoreYAMLEscaped }}</textarea><button type="button" class="pxc-cr-yaml-btn" data-target="{{ .RestoreYAMLModalID }}" data-cr-yaml-label="{{ .Namespace }}/{{ .Name }}">{{ .Name }}</button>{{ else }}{{ .Name }}{{ end }}</td>
+<td>{{ .Cluster }}</td>
+<td>{{ .Backup }}</td>
+<td>{{ if .StateProblem }}<span class="unsafe-flags-bad">{{ .State }}</span>{{ else }}{{ .State }}{{ end }}</td>
+<td>{{ if .Error }}{{ .Error }}{{ else }}—{{ end }}</td>
+<td>{{ .Completed }}</td>
+</tr>
+{{ end }}
+</tbody>
+</table>
+{{ end }}
+{{ end }}

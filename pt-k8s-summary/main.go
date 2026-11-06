@@ -214,7 +214,7 @@ func main() {
 	outPath := flag.String("out", "", "output HTML path (default: reports/<archive-stem>-summary.html for archives, else reports/report.html)")
 	galeraSince := flag.String("galera-since", "", "if set, pass to pt-galera-log-explainer --since= (RFC3339 / RFC3339Nano, e.g. 2023-01-05T03:24:26.000000Z) to only include events on or after that instant")
 	certifiedImages := flag.Bool("certified-images", true, "fetch Percona certified image list (by spec.crVersion) and compare with images from pods.yaml (uses network)")
-	layoutFlag := flag.String("layout", "grouped", "report layout: grouped (default tabs: Kubernetes | PXC | Percona Server) or classic (linear)")
+	layoutFlag := flag.String("layout", "grouped", "report layout: grouped (default tabs: Kubernetes | PXC | Percona Server | PostgreSQL | MongoDB) or classic (linear)")
 	flag.Usage = usage
 	flag.Parse()
 
@@ -417,6 +417,22 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		pgOperatorPodLogHTML = htempl.HTML(h)
 		hasPGOperatorPodLogs = true
 	}
+	var mongoPodLogHTML htempl.HTML
+	var hasMongoPodLogs bool
+	if h, err := collector.GatherMongoWorkloadPodLogsForReportHTML(dumpAbs, out, podsData, now); err != nil {
+		fmt.Fprintf(os.Stderr, "mongo pod logs: %v\n", err)
+	} else if h != "" {
+		mongoPodLogHTML = htempl.HTML(h)
+		hasMongoPodLogs = true
+	}
+	var mongoOperatorPodLogHTML htempl.HTML
+	var hasMongoOperatorPodLogs bool
+	if h, err := collector.GatherMongoOperatorPodLogsForReportHTML(dumpAbs, out, podsData, now); err != nil {
+		fmt.Fprintf(os.Stderr, "mongo operator pod logs: %v\n", err)
+	} else if h != "" {
+		mongoOperatorPodLogHTML = htempl.HTML(h)
+		hasMongoOperatorPodLogs = true
+	}
 	certCache := jpreport.NewCertifiedImageCache(certifiedImages)
 	pxcRows, pxcFileCount, err := jpreport.LoadPXCRowsFromDump(dumpAbs, now, podsData, certCache)
 	if err != nil {
@@ -545,6 +561,35 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 		pgUpgradeMeta = fmt.Sprintf("Found %d upgrade(s) in %d YAML file(s).", len(pgUpgradeRows), pgUpgradeFileCount)
 	}
 
+	mongoRows, mongoFileCount, err := jpreport.LoadMongoRowsFromDump(dumpAbs, now, podsData)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: mongo clusters: %v (continuing without MongoDB clusters)\n", err)
+		mongoRows, mongoFileCount = nil, 0
+	}
+	mongoMeta := ""
+	if len(mongoRows) > 0 {
+		mongoMeta = fmt.Sprintf("Found %d cluster(s) in %d YAML file(s).", len(mongoRows), mongoFileCount)
+	}
+	mongoBackupRows, mongoBackupFileCount, err := jpreport.LoadMongoBackupRowsFromDump(dumpAbs, now)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: mongo backups: %v (continuing without MongoDB backups)\n", err)
+		mongoBackupRows, mongoBackupFileCount = nil, 0
+	}
+	mongoBackupMeta := ""
+	if len(mongoBackupRows) > 0 {
+		mongoBackupMeta = fmt.Sprintf("Found %d backup(s) in %d YAML file(s).", len(mongoBackupRows), mongoBackupFileCount)
+	}
+	mongoRestoreRows, mongoRestoreFileCount, err := jpreport.LoadMongoRestoreRowsFromDump(dumpAbs)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: mongo restores: %v (continuing without MongoDB restores)\n", err)
+		mongoRestoreRows, mongoRestoreFileCount = nil, 0
+	}
+	mongoRestoreMeta := ""
+	if len(mongoRestoreRows) > 0 {
+		mongoRestoreMeta = fmt.Sprintf("Found %d restore(s) in %d YAML file(s).", len(mongoRestoreRows), mongoRestoreFileCount)
+	}
+	_ = mongoRestoreFileCount
+
 	proc.DumpInventory = dumpfiles.BuildInventory(dumpAbs, nodesStatus, nodesRel, nodesNote)
 	for _, row := range proc.DumpInventory {
 		if row.Status == dumpfiles.InvMissing || row.Status == dumpfiles.InvUnreadable {
@@ -561,9 +606,11 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	hasPXCCore := len(pxcRows) > 0 || len(backupRows) > 0
 	hasPSCore := len(psRows) > 0 || len(psBackupRows) > 0
 	hasPGCore := len(pgRows) > 0 || len(pgBackupRows) > 0 || len(pgRestoreRows) > 0 || len(pgUpgradeRows) > 0 || len(pgOperatorRows) > 0 || len(pgPodRows) > 0
-	hasPXCTab := hasPXCCore || len(sectionsByGroup[collector.GroupPXC]) > 0 || (hasPodLogs && !hasPSCore && !hasPGCore)
-	hasPSTab := hasPSCore || len(sectionsByGroup[collector.GroupPS]) > 0 || (hasPSPodLogs && !hasPXCCore && !hasPGCore)
+	hasMongoCore := len(mongoRows) > 0 || len(mongoBackupRows) > 0 || len(mongoRestoreRows) > 0
+	hasPXCTab := hasPXCCore || len(sectionsByGroup[collector.GroupPXC]) > 0 || (hasPodLogs && !hasPSCore && !hasPGCore && !hasMongoCore)
+	hasPSTab := hasPSCore || len(sectionsByGroup[collector.GroupPS]) > 0 || (hasPSPodLogs && !hasPXCCore && !hasPGCore && !hasMongoCore)
 	hasPGTab := hasPGCore || len(sectionsByGroup[collector.GroupPG]) > 0 || hasPGWorkloadPodLogs || hasPGOperatorPodLogs
+	hasMongoTab := hasMongoCore || len(sectionsByGroup[collector.GroupMongo]) > 0 || hasMongoPodLogs || hasMongoOperatorPodLogs
 	defaultTab := "k8s"
 	techTabs := 0
 	var soleTab string
@@ -578,6 +625,10 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	if hasPGTab {
 		techTabs++
 		soleTab = "pg"
+	}
+	if hasMongoTab {
+		techTabs++
+		soleTab = "mongo"
 	}
 	if techTabs == 1 {
 		defaultTab = soleTab
@@ -595,134 +646,164 @@ func runMain(args []string, dumpFlag, nodesFlag, outFlag, galeraSince string, ce
 	defer outF.Close()
 
 	execData := struct {
-		Proc                  processingReport
-		PageTitle             string
-		Layout                string
-		DefaultTab            string
-		HasPXCTab             bool
-		HasPSTab              bool
-		HasPGTab              bool
-		GeneratedAt           string
-		ToolVersion           string
-		NodeCount             int
-		Nodes                 []nodeRowTmpl
-		PXCRows               []jpreport.PXCRowTmpl
-		PXCEmpty              bool
-		PXCMeta               string
-		PXCMainColspan        int
-		ShowHAProxyCol        bool
-		ShowProxySQLCol       bool
-		BackupEmpty           bool
-		BackupMeta            string
-		BackupRows            []jpreport.BackupRowTmpl
-		ExtraSections         []collector.Section
-		CommonExtraSections   []collector.Section
-		PXCExtraSections      []collector.Section
-		PSExtraSections       []collector.Section
-		PGExtraSections       []collector.Section
-		HasPodLogs            bool
-		PodLogsHTML           htempl.HTML
-		HasPSPodLogs          bool
-		PSPodLogsHTML         htempl.HTML
-		PSEmpty               bool
-		PSMeta                string
-		PSMainColspan         int
-		PSRows                []jpreport.PSRowTmpl
-		ShowPSHAProxyCol      bool
-		ShowPSRouterCol       bool
-		ShowPSOrchestratorCol bool
-		PSBackupEmpty         bool
-		PSBackupMeta          string
-		PSBackupRows          []jpreport.BackupRowTmpl
-		PGEmpty               bool
-		PGMeta                string
-		PGMainColspan         int
-		PGRows                []jpreport.PGRowTmpl
-		PGOperatorRows        []jpreport.PGOperatorRowTmpl
-		PGPodRows             []jpreport.PGPodRowTmpl
-		PGBackupEmpty         bool
-		PGBackupMeta          string
-		PGBackupRows          []jpreport.PGBackupRowTmpl
-		PGRestoreEmpty        bool
-		PGRestoreMeta         string
-		PGRestoreRows         []jpreport.PGRestoreRowTmpl
-		PGUpgradeEmpty        bool
-		PGUpgradeMeta         string
-		PGUpgradeRows         []jpreport.PGUpgradeRowTmpl
-		HasPGWorkloadPodLogs  bool
-		PGWorkloadPodLogsHTML htempl.HTML
-		HasPGOperatorPodLogs  bool
-		PGOperatorPodLogsHTML htempl.HTML
+		Proc                     processingReport
+		PageTitle                string
+		Layout                   string
+		DefaultTab               string
+		HasPXCTab                bool
+		HasPSTab                 bool
+		HasPGTab                 bool
+		HasMongoTab              bool
+		GeneratedAt              string
+		ToolVersion              string
+		NodeCount                int
+		Nodes                    []nodeRowTmpl
+		PXCRows                  []jpreport.PXCRowTmpl
+		PXCEmpty                 bool
+		PXCMeta                  string
+		PXCMainColspan           int
+		ShowHAProxyCol           bool
+		ShowProxySQLCol          bool
+		BackupEmpty              bool
+		BackupMeta               string
+		BackupRows               []jpreport.BackupRowTmpl
+		ExtraSections            []collector.Section
+		CommonExtraSections      []collector.Section
+		PXCExtraSections         []collector.Section
+		PSExtraSections          []collector.Section
+		PGExtraSections          []collector.Section
+		MongoExtraSections       []collector.Section
+		HasPodLogs               bool
+		PodLogsHTML              htempl.HTML
+		HasPSPodLogs             bool
+		PSPodLogsHTML            htempl.HTML
+		PSEmpty                  bool
+		PSMeta                   string
+		PSMainColspan            int
+		PSRows                   []jpreport.PSRowTmpl
+		ShowPSHAProxyCol         bool
+		ShowPSRouterCol          bool
+		ShowPSOrchestratorCol    bool
+		PSBackupEmpty            bool
+		PSBackupMeta             string
+		PSBackupRows             []jpreport.BackupRowTmpl
+		PGEmpty                  bool
+		PGMeta                   string
+		PGMainColspan            int
+		PGRows                   []jpreport.PGRowTmpl
+		PGOperatorRows           []jpreport.PGOperatorRowTmpl
+		PGPodRows                []jpreport.PGPodRowTmpl
+		PGBackupEmpty            bool
+		PGBackupMeta             string
+		PGBackupRows             []jpreport.PGBackupRowTmpl
+		PGRestoreEmpty           bool
+		PGRestoreMeta            string
+		PGRestoreRows            []jpreport.PGRestoreRowTmpl
+		PGUpgradeEmpty           bool
+		PGUpgradeMeta            string
+		PGUpgradeRows            []jpreport.PGUpgradeRowTmpl
+		HasPGWorkloadPodLogs     bool
+		PGWorkloadPodLogsHTML    htempl.HTML
+		HasPGOperatorPodLogs     bool
+		PGOperatorPodLogsHTML    htempl.HTML
+		MongoEmpty               bool
+		MongoMeta                string
+		MongoRows                []jpreport.MongoRowTmpl
+		MongoBackupEmpty         bool
+		MongoBackupMeta          string
+		MongoBackupRows          []jpreport.MongoBackupRowTmpl
+		MongoRestoreEmpty        bool
+		MongoRestoreMeta         string
+		MongoRestoreRows         []jpreport.MongoRestoreRowTmpl
+		HasMongoPodLogs          bool
+		MongoPodLogsHTML         htempl.HTML
+		HasMongoOperatorPodLogs  bool
+		MongoOperatorPodLogsHTML htempl.HTML
 	}{
-		Proc:                  proc,
-		PageTitle:             reportPageTitle(hasPXCTab, hasPSTab, hasPGTab),
-		Layout:                layout,
-		DefaultTab:            defaultTab,
-		HasPXCTab:             hasPXCTab,
-		HasPSTab:              hasPSTab,
-		HasPGTab:              hasPGTab,
-		GeneratedAt:           now.UTC().Format(time.RFC3339),
-		ToolVersion:           version.String(),
-		NodeCount:             len(nodeRows),
-		Nodes:                 toTmplNodes(nodeRows),
-		PXCRows:               pxcRows,
-		PXCEmpty:              len(pxcRows) == 0,
-		PXCMeta:               pxcMeta,
-		PXCMainColspan:        8,
-		ShowHAProxyCol:        showHAProxyCol,
-		ShowProxySQLCol:       showProxySQLCol,
-		BackupEmpty:           len(backupRows) == 0,
-		BackupMeta:            backupMeta,
-		BackupRows:            backupRows,
-		ExtraSections:         extraSections,
-		CommonExtraSections:   sectionsByGroup[collector.GroupCommon],
-		PXCExtraSections:      sectionsByGroup[collector.GroupPXC],
-		PSExtraSections:       sectionsByGroup[collector.GroupPS],
-		PGExtraSections:       sectionsByGroup[collector.GroupPG],
-		HasPodLogs:            hasPodLogs,
-		PodLogsHTML:           podLogHTML,
-		HasPSPodLogs:          hasPSPodLogs,
-		PSPodLogsHTML:         psPodLogHTML,
-		PSEmpty:               len(psRows) == 0,
-		PSMeta:                psMeta,
-		PSMainColspan:         8,
-		PSRows:                psRows,
-		ShowPSHAProxyCol:      showPSHAProxyCol,
-		ShowPSRouterCol:       showPSRouterCol,
-		ShowPSOrchestratorCol: showPSOrchestratorCol,
-		PSBackupEmpty:         len(psBackupRows) == 0,
-		PSBackupMeta:          psBackupMeta,
-		PSBackupRows:          psBackupRows,
-		PGEmpty:               len(pgRows) == 0,
-		PGMeta:                pgMeta,
-		PGMainColspan:         9,
-		PGRows:                pgRows,
-		PGOperatorRows:        pgOperatorRows,
-		PGPodRows:             pgPodRows,
-		PGBackupEmpty:         len(pgBackupRows) == 0,
-		PGBackupMeta:          pgBackupMeta,
-		PGBackupRows:          pgBackupRows,
-		PGRestoreEmpty:        len(pgRestoreRows) == 0,
-		PGRestoreMeta:         pgRestoreMeta,
-		PGRestoreRows:         pgRestoreRows,
-		PGUpgradeEmpty:        len(pgUpgradeRows) == 0,
-		PGUpgradeMeta:         pgUpgradeMeta,
-		PGUpgradeRows:         pgUpgradeRows,
-		HasPGWorkloadPodLogs:  hasPGWorkloadPodLogs,
-		PGWorkloadPodLogsHTML: pgWorkloadPodLogHTML,
-		HasPGOperatorPodLogs:  hasPGOperatorPodLogs,
-		PGOperatorPodLogsHTML: pgOperatorPodLogHTML,
+		Proc:                     proc,
+		PageTitle:                reportPageTitle(hasPXCTab, hasPSTab, hasPGTab, hasMongoTab),
+		Layout:                   layout,
+		DefaultTab:               defaultTab,
+		HasPXCTab:                hasPXCTab,
+		HasPSTab:                 hasPSTab,
+		HasPGTab:                 hasPGTab,
+		HasMongoTab:              hasMongoTab,
+		GeneratedAt:              now.UTC().Format(time.RFC3339),
+		ToolVersion:              version.String(),
+		NodeCount:                len(nodeRows),
+		Nodes:                    toTmplNodes(nodeRows),
+		PXCRows:                  pxcRows,
+		PXCEmpty:                 len(pxcRows) == 0,
+		PXCMeta:                  pxcMeta,
+		PXCMainColspan:           8,
+		ShowHAProxyCol:           showHAProxyCol,
+		ShowProxySQLCol:          showProxySQLCol,
+		BackupEmpty:              len(backupRows) == 0,
+		BackupMeta:               backupMeta,
+		BackupRows:               backupRows,
+		ExtraSections:            extraSections,
+		CommonExtraSections:      sectionsByGroup[collector.GroupCommon],
+		PXCExtraSections:         sectionsByGroup[collector.GroupPXC],
+		PSExtraSections:          sectionsByGroup[collector.GroupPS],
+		PGExtraSections:          sectionsByGroup[collector.GroupPG],
+		MongoExtraSections:       sectionsByGroup[collector.GroupMongo],
+		HasPodLogs:               hasPodLogs,
+		PodLogsHTML:              podLogHTML,
+		HasPSPodLogs:             hasPSPodLogs,
+		PSPodLogsHTML:            psPodLogHTML,
+		PSEmpty:                  len(psRows) == 0,
+		PSMeta:                   psMeta,
+		PSMainColspan:            8,
+		PSRows:                   psRows,
+		ShowPSHAProxyCol:         showPSHAProxyCol,
+		ShowPSRouterCol:          showPSRouterCol,
+		ShowPSOrchestratorCol:    showPSOrchestratorCol,
+		PSBackupEmpty:            len(psBackupRows) == 0,
+		PSBackupMeta:             psBackupMeta,
+		PSBackupRows:             psBackupRows,
+		PGEmpty:                  len(pgRows) == 0,
+		PGMeta:                   pgMeta,
+		PGMainColspan:            9,
+		PGRows:                   pgRows,
+		PGOperatorRows:           pgOperatorRows,
+		PGPodRows:                pgPodRows,
+		PGBackupEmpty:            len(pgBackupRows) == 0,
+		PGBackupMeta:             pgBackupMeta,
+		PGBackupRows:             pgBackupRows,
+		PGRestoreEmpty:           len(pgRestoreRows) == 0,
+		PGRestoreMeta:            pgRestoreMeta,
+		PGRestoreRows:            pgRestoreRows,
+		PGUpgradeEmpty:           len(pgUpgradeRows) == 0,
+		PGUpgradeMeta:            pgUpgradeMeta,
+		PGUpgradeRows:            pgUpgradeRows,
+		HasPGWorkloadPodLogs:     hasPGWorkloadPodLogs,
+		PGWorkloadPodLogsHTML:    pgWorkloadPodLogHTML,
+		HasPGOperatorPodLogs:     hasPGOperatorPodLogs,
+		PGOperatorPodLogsHTML:    pgOperatorPodLogHTML,
+		MongoEmpty:               len(mongoRows) == 0,
+		MongoMeta:                mongoMeta,
+		MongoRows:                mongoRows,
+		MongoBackupEmpty:         len(mongoBackupRows) == 0,
+		MongoBackupMeta:          mongoBackupMeta,
+		MongoBackupRows:          mongoBackupRows,
+		MongoRestoreEmpty:        len(mongoRestoreRows) == 0,
+		MongoRestoreMeta:         mongoRestoreMeta,
+		MongoRestoreRows:         mongoRestoreRows,
+		HasMongoPodLogs:          hasMongoPodLogs,
+		MongoPodLogsHTML:         mongoPodLogHTML,
+		HasMongoOperatorPodLogs:  hasMongoOperatorPodLogs,
+		MongoOperatorPodLogsHTML: mongoOperatorPodLogHTML,
 	}
 
 	if err := tmpl.Execute(outF, execData); err != nil {
 		return fmt.Errorf("render: %w", err)
 	}
 
-	printWroteReport(out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount, len(psRows), psFileCount, len(psBackupRows), psBackupFileCount, len(pgRows), pgFileCount, len(pgBackupRows), pgBackupFileCount)
+	printWroteReport(out, len(nodeRows), len(pxcRows), pxcFileCount, len(backupRows), backupFileCount, len(psRows), psFileCount, len(psBackupRows), psBackupFileCount, len(pgRows), pgFileCount, len(pgBackupRows), pgBackupFileCount, len(mongoRows), mongoFileCount, len(mongoBackupRows), mongoBackupFileCount)
 	return nil
 }
 
-func reportPageTitle(hasPXC, hasPS, hasPG bool) string {
+func reportPageTitle(hasPXC, hasPS, hasPG, hasMongo bool) string {
 	n := 0
 	if hasPXC {
 		n++
@@ -733,15 +814,21 @@ func reportPageTitle(hasPXC, hasPS, hasPG bool) string {
 	if hasPG {
 		n++
 	}
+	if hasMongo {
+		n++
+	}
 	switch n {
 	case 1:
-		if hasPG && !hasPXC && !hasPS {
+		if hasMongo && !hasPXC && !hasPS && !hasPG {
+			return "Cluster summary · Percona Server for MongoDB"
+		}
+		if hasPG && !hasPXC && !hasPS && !hasMongo {
 			return "Cluster summary · Percona PostgreSQL"
 		}
-		if hasPS && !hasPXC && !hasPG {
+		if hasPS && !hasPXC && !hasPG && !hasMongo {
 			return "Cluster summary · Percona Server for MySQL"
 		}
-		if hasPXC && !hasPS && !hasPG {
+		if hasPXC && !hasPS && !hasPG && !hasMongo {
 			return "Cluster summary · Percona XtraDB Cluster"
 		}
 	case 0:

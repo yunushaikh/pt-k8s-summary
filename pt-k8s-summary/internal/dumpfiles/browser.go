@@ -61,6 +61,7 @@ func CollectBrowserFiles(dumpRoot string) []BrowserFile {
 		PXCClusterList, PXCBackupList,
 		PSClusterList, PSBackupList, PSRestoreList,
 		PGClusterList, PGBackupList, PGRestoreList, PGUpgradeList,
+		PSMDBClusterList, PSMDBBackupList, PSMDBRestoreList,
 	} {
 		if paths, err := FindListYAMLFiles(dumpRoot, target); err == nil {
 			add(paths)

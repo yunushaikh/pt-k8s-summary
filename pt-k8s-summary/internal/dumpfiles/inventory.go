@@ -104,6 +104,9 @@ func BuildInventory(dumpRoot string, nodesStatus InventoryStatus, nodesRel, node
 		{"pg-backups", "PerconaPGBackup list YAML", PGBackupList},
 		{"pg-restores", "PerconaPGRestore list YAML", PGRestoreList},
 		{"pg-upgrades", "PerconaPGUpgrade list YAML", PGUpgradeList},
+		{"psmdb-clusters", "PerconaServerMongoDB list YAML", PSMDBClusterList},
+		{"psmdb-backups", "PerconaServerMongoDBBackup list YAML", PSMDBBackupList},
+		{"psmdb-restores", "PerconaServerMongoDBRestore list YAML", PSMDBRestoreList},
 	} {
 		rows = append(rows, checkListTarget(dumpRoot, spec.key, spec.label, spec.target))
 	}

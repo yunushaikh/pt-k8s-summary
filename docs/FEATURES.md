@@ -21,6 +21,36 @@ Update this file whenever a feature is added or its sources change (see project 
 
 ---
 
+## Feature: Newest lines in the pod log viewer
+
+- **UI:** Above every pod-log table (PXC, Percona Server, PostgreSQL, MongoDB), and again in the viewer, above the log text, when the file is larger than the embed limit.
+- **Status:** shipped (since v0.9.0)
+- **Primary source:** the pod directory’s `*.log`, `logs.txt`, and `summary.txt`. Formatted and Full both embed the end of the file.
+- **Secondary / fallback:** the complete file is copied next to the report under `<report>_logs/` and linked as **Open in a new window**.
+- **Comparison:** no. The window is the newest part of the same file, not a second source.
+- **If missing:** a file under the size limit is shown in full, with no newest-lines note in the viewer.
+- **Caveats:** the cut starts on a newline. The first line of a very long last line can still be partial. Lines stay in file order, newest at the bottom of the window.
+
+## Feature: Percona Server for MongoDB topology and issues
+
+- **UI:** Percona MongoDB tab. Cluster table (state, ready, version, sharding, PITR, PMM, host). Under each cluster: a **Check these first** list, a topology table (config server, shards, mongos), and status conditions. Backups and restores are separate tables. Cluster, backup, and restore names open the CR YAML. Workload and operator pod logs sit at the top of the tab when the dump has them.
+- **Status:** shipped (since v0.9.0)
+- **Primary source:** `perconaservermongodbs.yaml` (`status.state`, `status.ready`/`size`, `status.message`, `status.host`, `status.replsets.*.members.stateStr`, `status.mongos`, `status.conditions`, `spec.replsets`, `spec.sharding`, `spec.backup.pitr`, `spec.unsafeFlags`). Backups: `perconaservermongodbbackups.yaml`. Restores: `perconaservermongodbrestores.yaml`.
+- **Secondary / fallback:** StatefulSet ready vs spec size from `statefulsets.yaml` (`<cluster>-<replset>` and `<cluster>-mongos`). Pod container readiness from `pods.yaml` labels `app.kubernetes.io/instance`, `component`, and `replset`.
+- **Comparison:** yes — CR ready/size vs spec size, CR size vs StatefulSet ready replicas, CR mongos ready vs pod container ready. Rows turn red when state is not ready, a condition type is `error` with status True (even if cluster state is ready), a replset has no members or no PRIMARY, a shard is not added, or no matching pods exist.
+- **If missing:** empty section text. A replset with size greater than zero and an empty members map shows “no member roles in status”. A size-1 replset with one PRIMARY is shown as PRIMARY; SECONDARY is shown only when `stateStr` says so.
+- **Caveats:** these roles come from the operator status, not a live `rs.status()`. Private keys are not inlined; certificate expiry is the Certificates section.
+
+## Feature: Percona Server for MongoDB certificates
+
+- **UI:** Percona MongoDB tab → **Certificates** (under backups and restores). Columns: namespace, cluster, dump file, cert, issuer, Not Before, Not After, note.
+- **Status:** shipped (since v0.9.0)
+- **Primary source:** OpenSSL `x509 -text` files `<namespace>/<cluster>-ca-cert`, `<cluster>-ssl`, and `<cluster>-ssl-internal`. Each `--- Decoded tls.crt ---` / `ca.crt` block is one row. `tls.key` is a note only.
+- **Secondary / fallback:** cert-manager `certificates.yaml` (`status.notBefore`, `status.notAfter`, Ready condition, `spec.issuerRef.name`) when none of those OpenSSL files match a PerconaServerMongoDB cluster.
+- **Comparison:** no. The two sources are not shown together. OpenSSL text wins when it is present.
+- **If missing:** the Certificates block is omitted.
+- **Caveats:** a file is included only when its name matches a PerconaServerMongoDB in the same namespace, so a MySQL or PXC cert in the same dump is left on that technology’s tab. Expiry is the Not After value from the dump, not a live check.
+
 ## Feature: PostgreSQL instance role (Leader / Secondary)
 
 - **UI:** Percona PostgreSQL tab → **PostgreSQL workload pods** table — columns **Kind**, **Role (pod)**, **Role (Patroni)**.

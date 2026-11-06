@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -26,7 +27,10 @@ func GatherPodLogsForReportHTML(dumpRoot, galeraSince, reportOutPath string, pod
 }
 
 const pxcLogMaxBytes = 750 * 1024 // per file embed
-const pxcLogMaxRunes  = 400_000
+const pxcLogMaxRunes = 400_000
+
+// newestLogBanner is the first line of a large-file preview so the window is not mistaken for the start of the file.
+const newestLogBanner = "… [newest lines of this file — earlier lines are not shown in this window]\n"
 
 // podLogFile holds one log file's embedded text (cleaned + raw) for the static report.
 type podLogFile struct {
@@ -43,12 +47,12 @@ type podLogFile struct {
 
 // podLogRow is one table row (one PXC pod with one or more log files).
 type podLogRow struct {
-	Namespace string
-	Pod       string
+	Namespace                              string
+	Pod                                    string
 	Ready, Status, Restarts, Age, IP, Node string
 	Files                                  []podLogFile
-	PodYAMLModalID string // id base for textarea (suffix -full); empty when no pods.yaml match
-	PodYAMLEscaped string // HTML-escaped YAML for modal; empty when unavailable
+	PodYAMLModalID                         string // id base for textarea (suffix -full); empty when no pods.yaml match
+	PodYAMLEscaped                         string // HTML-escaped YAML for modal; empty when unavailable
 }
 
 func applyPodK8sToRows(rows []podLogRow, k8s map[string]jpreport.PodK8sMeta) {
@@ -179,12 +183,57 @@ func discoverLogFilePathsInPod(podPath string) []string {
 	return found
 }
 
-func readAndLimit(rawBytes []byte) (raw string, trunc bool) {
-	n := len(rawBytes)
-	if n > pxcLogMaxBytes {
-		return string(rawBytes[:pxcLogMaxBytes]) + "\n… [truncated for report embed]", true
+// tailBytes returns the last max bytes, starting at a newline and a valid UTF-8 boundary.
+func tailBytes(b []byte, max int) []byte {
+	if max <= 0 || len(b) <= max {
+		return b
 	}
-	return string(rawBytes), false
+	cut := len(b) - max
+	for cut < len(b) && !utf8.RuneStart(b[cut]) {
+		cut++
+	}
+	window := b[cut:]
+	limit := 8192
+	if limit > len(window) {
+		limit = len(window)
+	}
+	if i := bytes.IndexByte(window[:limit], '\n'); i >= 0 && i+1 < len(window) {
+		cut += i + 1
+	}
+	return b[cut:]
+}
+
+// tailRunes returns the last max runes, starting at the next newline when one is near the cut.
+func tailRunes(s string, max int) string {
+	if max <= 0 || utf8.RuneCountInString(s) <= max {
+		return s
+	}
+	r := []rune(s)
+	tail := string(r[len(r)-max:])
+	limit := 2000
+	if limit > len(tail) {
+		limit = len(tail)
+	}
+	if i := strings.IndexByte(tail[:limit], '\n'); i >= 0 && i+1 < len(tail) {
+		tail = tail[i+1:]
+	}
+	return tail
+}
+
+// previewPodLog embeds a whole small file, or the newest bytes of a large one.
+func previewPodLog(rawBytes []byte) (string, bool) {
+	if !logNeedsTruncation(rawBytes) {
+		return string(rawBytes), false
+	}
+	chunk := rawBytes
+	if len(chunk) > pxcLogMaxBytes {
+		chunk = tailBytes(chunk, pxcLogMaxBytes)
+	}
+	s := string(chunk)
+	if utf8.RuneCountInString(s) > pxcLogMaxRunes {
+		s = tailRunes(s, pxcLogMaxRunes)
+	}
+	return newestLogBanner + s, true
 }
 
 func reportLogAssetsDir(reportOutPath string) string {
@@ -223,13 +272,6 @@ func logNeedsTruncation(rawBytes []byte) bool {
 		return true
 	}
 	return utf8.RuneCount(rawBytes) > pxcLogMaxRunes
-}
-
-func capRunes(s string) string {
-	if utf8.RuneCountInString(s) <= pxcLogMaxRunes {
-		return s
-	}
-	return string([]rune(s)[:pxcLogMaxRunes]) + "\n… [truncated for report embed]"
 }
 
 func findPodLogRows(dumpRoot, reportOutPath, wantKind string, podLoader *jpreport.PodLoader) ([]podLogRow, error) {
@@ -286,7 +328,12 @@ func findPodLogRows(dumpRoot, reportOutPath, wantKind string, podLoader *jprepor
 			relDump, _ := filepath.Rel(dumpRoot, abs)
 			relDump = filepath.ToSlash(relDump)
 			cleanFull, lineCount := cleanPodLogText(string(data))
-			trunc := logNeedsTruncation(data)
+			raw, trunc := previewPodLog(data)
+			clean, _ := cleanPodLogText(raw)
+			if utf8.RuneCountInString(clean) > pxcLogMaxRunes {
+				clean = newestLogBanner + tailRunes(clean, pxcLogMaxRunes)
+				trunc = true
+			}
 			var fullRawHref, fullCleanHref string
 			if trunc && reportOutPath != "" {
 				fullRawHref, fullCleanHref, err = writePodLogSidecars(reportOutPath, relDump, data, cleanFull)
@@ -294,10 +341,6 @@ func findPodLogRows(dumpRoot, reportOutPath, wantKind string, podLoader *jprepor
 					return nil, fmt.Errorf("write sidecar for %s: %w", relDump, err)
 				}
 			}
-			raw, _ := readAndLimit(data)
-			raw = capRunes(raw)
-			clean, _ := cleanPodLogText(raw)
-			clean = capRunes(clean)
 			files = append(files, podLogFile{
 				RelInPod:      relInPod,
 				RelInDump:     relDump,
@@ -455,7 +498,8 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 #pxc-gle-modal-pxc .pxc-gle-tab { margin: 0; padding: 0.65rem 0.8rem; overflow: auto; max-height: calc(92vh - 2.6rem); font-size: 0.66rem; line-height: 1.1; font-family: ui-monospace, Menlo, "Consolas", "Liberation Mono", monospace; white-space: pre; tab-size: 2; word-break: normal; color: #0f172a; background: #fff; border: none; }
 #pxc-pod-logs .pxc-gle-blob { display: none; }
 </style>`)
-	b.WriteString(`<table class="pxc-plg-table"><thead><tr><th>Namespace</th><th>Name</th><th>Ready</th><th>Status</th><th>Restarts</th><th>Age</th><th>IP</th><th>Node</th><th>Log file</th><th class="pxc-plg-view">View<span class="pxc-plg-helptip"><button type="button" class="pxc-plg-helptip__btn" id="pxc-plg-helptip-btn" aria-expanded="false" aria-controls="pxc-plg-helptip-box" title="What Formatted and Full mean (hover or click)">i</button><div class="pxc-plg-helptip__box" id="pxc-plg-helptip-box" role="tooltip" aria-hidden="true"><strong>Formatted</strong> &mdash; Drops shell <code>set -x</code> noise and expands one-line JSON log lines so the file is easier to read.<br><br><strong>Full</strong> &mdash; The exact file content as collected, with no line filtering. Large files show an in-report preview; use <strong>Load full</strong> in the modal or the sidecar links to open the complete file from the <code>_logs</code> directory next to this report.</div></span></th></tr></thead><tbody>`)
+	b.WriteString(`<p class="pxc-plg-note">A large log opens on its <strong>newest lines</strong>, not the start of the file. To see earlier lines, use <strong>Open in a new window</strong> in the viewer.</p>`)
+	b.WriteString(`<table class="pxc-plg-table"><thead><tr><th>Namespace</th><th>Name</th><th>Ready</th><th>Status</th><th>Restarts</th><th>Age</th><th>IP</th><th>Node</th><th>Log file</th><th class="pxc-plg-view">View<span class="pxc-plg-helptip"><button type="button" class="pxc-plg-helptip__btn" id="pxc-plg-helptip-btn" aria-expanded="false" aria-controls="pxc-plg-helptip-box" title="What Formatted and Full mean (hover or click)">i</button><div class="pxc-plg-helptip__box" id="pxc-plg-helptip-box" role="tooltip" aria-hidden="true"><strong>Formatted</strong> &mdash; Drops shell <code>set -x</code> noise and expands one-line JSON log lines so the file is easier to read.<br><br><strong>Full</strong> &mdash; The exact file content as collected, with no line filtering. A large file shows its newest lines in this window. Use <strong>Open in a new window</strong> for the complete file from the <code>_logs</code> directory next to this report.</div></span></th></tr></thead><tbody>`)
 	for podIdx, row := range rows {
 		b.WriteString(`<tr data-pxc-plg-p="`)
 		b.WriteString(esc(fmt.Sprintf("%d", podIdx)))
@@ -491,7 +535,7 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 		for fIdx, f := range row.Files {
 			optTitle := f.RelInDump + " | " + fmt.Sprintf("%d lines (formatted) | %s", f.LinesFmt, humanSize(f.Bytes))
 			if f.Trunc {
-				optTitle += " | truncated in report"
+				optTitle += " | newest lines in report"
 			}
 			b.WriteString(`<option value="`)
 			b.WriteString(esc(fmt.Sprintf("%d", fIdx)))
@@ -516,7 +560,7 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 			b.WriteString(`">`)
 			b.WriteString(esc(f.RelInPod + " | " + humanSize(f.Bytes)))
 			if f.Trunc {
-				b.WriteString(esc(" (part.)"))
+				b.WriteString(esc(" (newest)"))
 			}
 			b.WriteString(`</option>`)
 		}
@@ -554,7 +598,7 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 	b.WriteString(`<pre class="pxc-plg-pre" id="pxc-plg-dlg-body-pxc" tabindex="0" aria-live="polite" aria-atomic="true" aria-labelledby="pxc-plg-dlg-title-pxc">`)
 	b.WriteString(`</pre></div></div>`)
 	if includeGalera {
-		b.WriteString(`<p class="pxc-plg-note">PXC-related pods (name contains <code>-pxc-</code>, <code>pxc-operator</code>, <code>xtradb-cluster-operator</code>, or <code>haproxy</code> / <code>proxysql</code>) are scanned for log files: <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under the pod directory (e.g. <code>var/lib/mysql/mysqld-error.log</code>). Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB are previewed in the HTML; the complete file is copied to a sibling <code>_logs</code> directory next to the report (same layout as the dump) and linked from the viewer.</p>`)
+		b.WriteString(`<p class="pxc-plg-note">PXC-related pods (name contains <code>-pxc-</code>, <code>pxc-operator</code>, <code>xtradb-cluster-operator</code>, or <code>haproxy</code> / <code>proxysql</code>) are scanned for log files: <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under the pod directory (e.g. <code>var/lib/mysql/mysqld-error.log</code>). Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB show their newest lines in the viewer; the complete file is copied to a sibling <code>_logs</code> directory next to the report (same layout as the dump). Open that file in a new window from the viewer.</p>`)
 		b.WriteString(`<div class="pxc-gle-wrap"><h4 class="pxc-gle-h4"><a href="https://docs.percona.com/percona-toolkit/pt-galera-log-explainer.html" rel="noopener noreferrer" target="_blank">pt-galera-log-explainer</a> <code>list --all</code></h4>`)
 		if strings.TrimSpace(galeraSince) != "" {
 			b.WriteString(`<p class="pxc-gle-meta" style="margin:0 0 0.5rem 0;">` + esc("--since "+galeraSince) + `</p>`)
@@ -592,11 +636,15 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
 		b.WriteString(`<pre class="pxc-gle-tab" id="pxc-gle-dlg-body-pxc" tabindex="0" aria-live="polite" aria-atomic="true" aria-labelledby="pxc-gle-dlg-title-pxc">`)
 		b.WriteString(`</pre></div></div>`)
 	} else if wantKind == "ps" {
-		b.WriteString(`<p class="pxc-plg-note">Percona Server for MySQL operator pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under each pod directory. Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB are previewed in the HTML; the complete file is copied to a sibling <code>_logs</code> directory next to the report and linked from the viewer.</p>`)
+		b.WriteString(`<p class="pxc-plg-note">Percona Server for MySQL operator pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under each pod directory. Status columns come from <code>pods.yaml</code> when the pod is listed there. Choose a file in the <strong>Log file</strong> list, then open it as <strong>Formatted</strong> (removes <code>set -x</code> noise, expands JSON log lines) or <strong>Full</strong> (exact dump content). Files larger than ~750&nbsp;KiB show their newest lines in the viewer; the complete file is copied to a sibling <code>_logs</code> directory next to the report. Open that file in a new window from the viewer.</p>`)
 	} else if wantKind == "pg-workload" {
 		b.WriteString(`<p class="pxc-plg-note">PostgreSQL instance and pgBouncer pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under each pod directory. Status columns come from <code>pods.yaml</code> when present. Use <strong>Formatted</strong> or <strong>Full</strong> in the viewer; large files are linked from the report <code>_logs</code> sidecar directory.</p>`)
 	} else if wantKind == "pg-operator" {
 		b.WriteString(`<p class="pxc-plg-note">Percona PostgreSQL operator pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and all <code>*.log</code> files under each pod directory. Status columns come from <code>pods.yaml</code> when present.</p>`)
+	} else if wantKind == "mongo-workload" {
+		b.WriteString(`<p class="pxc-plg-note">MongoDB mongod, config-server, and mongos pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and <code>*.log</code> files (<code>mongod.log</code>, <code>mongos.log</code>, <code>backup-agent.log</code>). Status columns come from <code>pods.yaml</code> when present.</p>`)
+	} else if wantKind == "mongo-operator" {
+		b.WriteString(`<p class="pxc-plg-note">Percona Server for MongoDB operator pods are scanned for <code>logs.txt</code>, <code>summary.txt</code>, and <code>*.log</code> files. Status columns come from <code>pods.yaml</code> when present.</p>`)
 	}
 	b.WriteString("<script>(function(){\n")
 	b.WriteString(`  function closePlgHelptip(){
@@ -638,10 +686,10 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
     if(!bar || !fullHref) return;
     loadFullHref=fullHref;
     bar.classList.add("pxc-plg-dlg-bar--show");
-    bar.innerHTML="Preview only (file exceeds embed limit). "+
-      "<button type=\"button\" id=\"pxc-plg-load-full\">Load full</button>"+
+    bar.innerHTML="These are the newest lines of the file. Earlier lines are not in this window. "+
+      "<a href=\""+fullHref+"\" target=\"_blank\" rel=\"noopener\">Open in a new window</a>"+
       "<span class=\"pxc-plg-dlg-bar-sep\">|</span>"+
-      "<a href=\""+fullHref+"\" target=\"_blank\" rel=\"noopener\">Open in new tab</a>"+
+      "<button type=\"button\" id=\"pxc-plg-load-full\">Load full</button>"+
       "<span class=\"pxc-plg-dlg-bar-sep\">|</span>"+
       "<a href=\""+fullHref+"\" download>Download</a>";
     var btn=document.getElementById("pxc-plg-load-full");
@@ -653,12 +701,13 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
           return r.text();
         }).then(function(t){
           body.textContent=t||"(empty)";
-          bar.innerHTML="Showing full log from sidecar file. "+
-            "<a href=\""+fullHref+"\" target=\"_blank\" rel=\"noopener\">Open in new tab</a>"+
+          body.scrollTop=body.scrollHeight;
+          bar.innerHTML="Showing the full log. "+
+            "<a href=\""+fullHref+"\" target=\"_blank\" rel=\"noopener\">Open in a new window</a>"+
             "<span class=\"pxc-plg-dlg-bar-sep\">|</span>"+
             "<a href=\""+fullHref+"\" download>Download</a>";
         }).catch(function(){
-          body.textContent="Could not load full log in the viewer (browser blocked fetch). Use Open in new tab or Download above.";
+          body.textContent="Could not load full log in the viewer (browser blocked fetch). Use Open in a new window or Download above.";
         });
       });
     }
@@ -671,6 +720,7 @@ func gatherPodLogsSectionHTML(dumpRoot, galeraSince, reportOutPath string, k8s m
     title.textContent=sub||"Log";
     if(isTrunc && fullHref) showTruncBar(fullHref, mode);
     m.setAttribute("aria-hidden","false");
+    if(isTrunc) body.scrollTop=body.scrollHeight;
     body.focus();
   }
   function closeModal(){

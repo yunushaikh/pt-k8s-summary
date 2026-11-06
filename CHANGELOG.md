@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-06
+
+### Added
+
+- **Percona Server for MongoDB:** a MongoDB tab for sharded and replica-set clusters. The report lists cluster state, ready count, host, PITR, unsafe flags, and a topology table (config server, shards, mongos) with PRIMARY/SECONDARY from member status. Red rows call out not-ready components, missing members, no PRIMARY, StatefulSet gaps, pod containers that are not ready, error conditions (including when cluster state is still ready), failed backups, and restores linked to a backup name. **Certificates** list issuer and Not Before / Not After from the cluster TLS dumps (`-ca-cert`, `-ssl`, `-ssl-internal`), or from `certificates.yaml` when those files are absent. Pod logs for mongod, mongos, backup-agent, and the operator are at the top of the tab. See [docs/FEATURES.md](docs/FEATURES.md).
+
+### Changed
+
+- **Pod log viewer (all technologies):** a large log opens on its newest lines instead of the oldest. A note above the log table, and again above the text in the viewer, says so. **Open in a new window** still loads the complete file from the `_logs` folder next to the report.
+
 ## [0.8.6] - 2026-10-20
 
 ### Changed

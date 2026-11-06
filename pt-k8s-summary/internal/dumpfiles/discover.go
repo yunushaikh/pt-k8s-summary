@@ -92,6 +92,30 @@ var (
 		},
 		NameContains: []string{"perconapgupgrade"},
 	}
+	PSMDBClusterList = ListTarget{
+		Kind: "PerconaServerMongoDB",
+		PreferredBasenames: []string{
+			"perconaservermongodbs.psmdb.percona.com.yaml",
+			"perconaservermongodbs.yaml",
+		},
+		NameContains: []string{"perconaservermongodbs"},
+	}
+	PSMDBBackupList = ListTarget{
+		Kind: "PerconaServerMongoDBBackup",
+		PreferredBasenames: []string{
+			"perconaservermongodbbackups.psmdb.percona.com.yaml",
+			"perconaservermongodbbackups.yaml",
+		},
+		NameContains: []string{"perconaservermongodbbackup"},
+	}
+	PSMDBRestoreList = ListTarget{
+		Kind: "PerconaServerMongoDBRestore",
+		PreferredBasenames: []string{
+			"perconaservermongodbrestores.psmdb.percona.com.yaml",
+			"perconaservermongodbrestores.yaml",
+		},
+		NameContains: []string{"perconaservermongodbrestore"},
+	}
 )
 
 // FindListYAMLFiles returns sorted absolute paths. Preferred basenames win; otherwise kind-matched fallbacks.

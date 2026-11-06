@@ -1,0 +1,18 @@
+{{ if .HasMongoTab }}
+<h1 class="report-section-title">Percona Server for MongoDB</h1>
+{{ if .HasMongoPodLogs }}
+<section class="report-section pod-logs-top" id="mongo-workload-pod-logs">
+<h2 class="pxc-pod-logs-h2">MongoDB · mongod, config server, and mongos logs</h2>
+{{ .MongoPodLogsHTML }}
+</section>
+{{ end }}
+{{ if .HasMongoOperatorPodLogs }}
+<section class="report-section pod-logs-top" id="mongo-operator-pod-logs">
+<h2 class="pxc-pod-logs-h2">MongoDB · operator logs</h2>
+{{ .MongoOperatorPodLogsHTML }}
+</section>
+{{ end }}
+{{ template "mongoClusters" . }}
+{{ template "mongoBackups" . }}
+{{ template "mongoRestores" . }}
+{{ end }}
